@@ -82,8 +82,8 @@ export default function BriefingLoading({ overlay = false }: { overlay?: boolean
       setTimeout(() => {
         setMsgIdx((i) => (i + 1) % messages.length);
         setFade(true);
-      }, 180);
-    }, 1100);
+      }, 220);
+    }, 2600);
     return () => clearInterval(id);
   }, [messages.length]);
 
