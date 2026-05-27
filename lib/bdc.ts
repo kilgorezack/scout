@@ -1,6 +1,6 @@
 import { getSupabase } from './supabase';
 import { zipToState } from './zip-state';
-import { hotrodConfigured, hotrodProvidersForZips } from './hotrod';
+import { hotrodConfigured, hotrodProvidersForZips, type HotrodDiagnostics } from './hotrod';
 
 export type Technology = 'Fiber' | 'Cable' | 'FWA' | 'DSL' | 'Satellite';
 
@@ -232,7 +232,7 @@ function mergeRows(rows: ProviderInZip[]): ProviderInZip[] {
 export type ProvidersResult = {
   rows: ProviderInZip[];
   source: 'hotrod' | 'supabase' | 'stub';
-  hotrod?: { providersScanned: number; matchesFound: number; totalMillis: number; zipsResolved: Record<string, number> };
+  hotrod?: HotrodDiagnostics;
 };
 
 export async function providersForZipsWithSource(zips: string[]): Promise<ProvidersResult> {

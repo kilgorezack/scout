@@ -54,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="font-medium text-ink-700">Scout</span> · Competitive intelligence for broadband service providers
             </p>
             <p className="text-ink-400">FCC BDC · Census ACS · public reviews</p>
+            <p className="text-ink-400">© 2026 Summit Digital Labs</p>
           </div>
         </footer>
       </body>

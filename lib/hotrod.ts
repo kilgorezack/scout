@@ -29,8 +29,8 @@ const url = {
     // Census TIGERweb ArcGIS ZCTA5 layer. Returns the ZIP's polygon boundary as GeoJSON.
     `https://tigerweb.geo.census.gov/arcgis/rest/services/Census2020/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/4/query?where=BASENAME%3D%27${zip}%27&outFields=BASENAME&returnGeometry=true&f=geojson&outSR=4326`,
   zipCentroid: (zip: string) =>
-    // Fallback if the ZCTA polygon lookup fails.
-    `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(zip)}&benchmark=2020&format=json`
+    // Zippopotam.us — free, no-auth, reliable for bare 5-digit US ZIPs.
+    `https://api.zippopotam.us/us/${zip}`
 };
 
 type RemoteProvider = { id: string; name: string; techs: string[] };
@@ -105,30 +105,34 @@ async function zipPolygon(zip: string): Promise<number[][][] | null> {
   return null;
 }
 
-async function zipCentroidFallback(zip: string): Promise<[number, number] | null> {
+async function zipCentroid(zip: string): Promise<[number, number] | null> {
+  // Zippopotam.us returns { places: [{ latitude: "48.7064", longitude: "-105.967", ... }] }.
   const data = await fetchJson<{
-    result?: { addressMatches?: Array<{ coordinates?: { x: number; y: number } }> };
+    places?: Array<{ latitude?: string; longitude?: string }>;
   }>(url.zipCentroid(zip), 60 * 60 * 24 * 30);
-  const c = data?.result?.addressMatches?.[0]?.coordinates;
-  if (!c) return null;
-  return [c.y, c.x];
+  const p = data?.places?.[0];
+  if (!p?.latitude || !p?.longitude) return null;
+  const lat = parseFloat(p.latitude);
+  const lng = parseFloat(p.longitude);
+  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+  return [lat, lng];
 }
 
 function getZipHexes(zip: string): Promise<Set<string>> {
   let p = zipHexCache.get(zip);
   if (!p) {
     p = (async () => {
-      // Primary path: real ZCTA polygon → exact hex coverage.
-      const rings = await zipPolygon(zip);
+      const cells = new Set<string>();
+
+      // Run polygon and centroid lookups in parallel — union the results.
+      // Polygon gives exact coverage when available; gridDisk around the
+      // centroid is a robust safety net (and the only path for ZIPs whose
+      // ZCTA boundary the TIGERweb service doesn't return).
+      const [rings, c] = await Promise.all([zipPolygon(zip), zipCentroid(zip)]);
+
       if (rings && rings.length > 0) {
-        const cells = new Set<string>();
-        // The first ring is the outer boundary; later rings are holes.
-        // h3-js polygonToCells handles holes correctly when passed via the
-        // second-level array structure. For simplicity we use just outer rings.
         for (const ring of rings) {
           if (!ring || ring.length < 4) continue;
-          // ring is array of [lng, lat] in GeoJSON, h3 wants [lat, lng] unless
-          // we pass an isGeoJson-style polygon. We use the explicit form.
           const polygon = [ring.map((p) => [p[1], p[0]] as [number, number])];
           try {
             for (const c of polygonToCells(polygon, RES)) cells.add(c);
@@ -136,14 +140,14 @@ function getZipHexes(zip: string): Promise<Set<string>> {
             // ignore individual ring failures
           }
         }
-        if (cells.size > 0) return cells;
       }
 
-      // Fallback: centroid + gridDisk for ZIPs whose polygon lookup fails.
-      const c = await zipCentroidFallback(zip);
-      if (!c) return new Set<string>();
-      const center = latLngToCell(c[0], c[1], RES);
-      return new Set<string>(gridDisk(center, RING_K));
+      if (c) {
+        const center = latLngToCell(c[0], c[1], RES);
+        for (const h of gridDisk(center, RING_K)) cells.add(h);
+      }
+
+      return cells;
     })();
     zipHexCache.set(zip, p);
   }
@@ -174,6 +178,7 @@ export type HotrodDiagnostics = {
   providersScanned: number;
   matchesFound: number;
   totalMillis: number;
+  error?: string;
 };
 
 export async function hotrodProvidersForZips(
@@ -205,7 +210,19 @@ export async function hotrodProvidersForZips(
   }
 
   const providers = await loadProviders();
-  if (providers.length === 0) return null;
+  if (providers.length === 0) {
+    return {
+      rows: [],
+      diagnostics: {
+        bucket: BUCKET,
+        zipsResolved: Object.fromEntries(zips.map((z) => [z, zipHexMap.get(z)?.size ?? 0])),
+        providersScanned: 0,
+        matchesFound: 0,
+        totalMillis: Date.now() - t0,
+        error: 'providers.json fetch returned empty'
+      }
+    };
+  }
 
   type Task = { providerId: string; providerName: string; tech: string };
   const tasks: Task[] = [];

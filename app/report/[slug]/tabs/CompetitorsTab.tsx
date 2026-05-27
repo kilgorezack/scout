@@ -12,7 +12,47 @@ const TECH_COLOR: Record<string, string> = {
 
 export default function CompetitorsTab({ report }: { report: ReportPayload }) {
   if (report.competitors.length === 0) {
-    return <p className="text-sm text-ink-600">No competitors identified for this footprint.</p>;
+    return (
+      <div className="panel p-7">
+        <p className="eyebrow">No competitors returned</p>
+        <h3 className="display mt-2 text-2xl text-ink-900">Empty result from {report.dataSource}.</h3>
+        {report.hotrodDiagnostics && (
+          <dl className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">Providers scanned</dt>
+              <dd className="font-mono text-ink-900">{report.hotrodDiagnostics.providersScanned}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">Matches found</dt>
+              <dd className="font-mono text-ink-900">{report.hotrodDiagnostics.matchesFound}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">Elapsed</dt>
+              <dd className="font-mono text-ink-900">{report.hotrodDiagnostics.totalMillis} ms</dd>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">Hexes per ZIP</dt>
+              <dd className="font-mono text-xs text-ink-900">
+                {Object.entries(report.hotrodDiagnostics.zipsResolved).map(([z, n]) => (
+                  <span key={z} className="mr-2">{z}:{n}</span>
+                ))}
+              </dd>
+            </div>
+          </dl>
+        )}
+        {report.hotrodDiagnostics?.error && (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+            {report.hotrodDiagnostics.error}
+          </p>
+        )}
+        <p className="mt-5 text-sm text-ink-600">
+          If hexes per ZIP is 0, the ZIP→hex lookup failed (Census/Zippopotam unreachable). If providers
+          scanned is 0, the Firebase bucket fetch failed. If matches found is 0 but the other counts
+          look right, your ZIP genuinely has no providers in the BDC index — verify by spot-checking a
+          neighboring ZIP.
+        </p>
+      </div>
+    );
   }
   return (
     <>
