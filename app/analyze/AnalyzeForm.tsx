@@ -2,39 +2,36 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { parseZips } from '@/lib/utils';
+import { buildSlug } from '@/lib/slug';
 
 export default function AnalyzeForm() {
   const router = useRouter();
   const [zipsRaw, setZipsRaw] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const parsed = parseZips(zipsRaw);
 
-  async function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (parsed.length === 0) {
       setError('Enter at least one valid 5-digit ZIP code.');
       return;
     }
-    setSubmitting(true);
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zips: parsed, companyName: companyName.trim() || null })
-      });
-      if (!res.ok) throw new Error('Analyze request failed');
-      const { slug } = (await res.json()) as { slug: string };
-      router.push(`/report/${slug}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
-      setSubmitting(false);
-    }
+    // The slug is self-contained — compute it client-side and navigate
+    // instantly so the report's loading.tsx appears the moment the user
+    // clicks. Fire the persistence POST in the background; never block on it.
+    const company = companyName.trim() || null;
+    const slug = buildSlug(parsed, company);
+    void fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zips: parsed, companyName: company })
+    }).catch(() => {});
+    router.push(`/report/${slug}`);
   }
 
   return (
@@ -73,9 +70,8 @@ export default function AnalyzeForm() {
 
       <div className="mt-7 flex items-center justify-between">
         <span className="text-xs text-ink-500">Free · No login · Shareable</span>
-        <button type="submit" className="btn-primary" disabled={submitting || parsed.length === 0}>
-          {submitting ? <Loader2 className="animate-spin" size={16} /> : <ArrowRight size={16} />}
-          {submitting ? 'Building briefing…' : 'Generate briefing'}
+        <button type="submit" className="btn-primary" disabled={parsed.length === 0}>
+          Generate briefing <ArrowRight size={16} />
         </button>
       </div>
     </form>
