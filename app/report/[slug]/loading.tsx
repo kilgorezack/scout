@@ -10,9 +10,55 @@ const STAGES = [
   { label: 'Composing the briefing', detail: 'Almost there…' }
 ];
 
+// Cycle of slightly silly status messages — Claude Code style.
+const MESSAGES = [
+  'Reticulating fiber strands…',
+  'Triangulating Starlink dishes…',
+  'Bribing the FCC for a fresh map…',
+  'Wrangling 2,173 ILECs into a spreadsheet…',
+  'Decoding USPS sectional center codes…',
+  'Whispering to ZCTAs…',
+  'Asking Comcast politely for permission…',
+  'Untangling cable spaghetti…',
+  'Photographing competitor speed tests…',
+  'Hex-tagging the basemap…',
+  'Filing imaginary Form 477s…',
+  'Negotiating with low-earth orbit…',
+  'Bartering with rural co-ops…',
+  'Polling the utility pole…',
+  'Calibrating gigabit expectations…',
+  'Counting actually-existing households…',
+  'Pinging cell towers politely…',
+  'Convincing T-Mobile to share its homework…',
+  'Indexing the SmartHome opportunity surface…',
+  'Recalibrating SmartTown coordinates…',
+  'Drawing fiber overbuilds on a napkin…',
+  'Translating tech codes into English…',
+  'Splicing virtual fiber…',
+  'Buffering… no wait, that’s our competitors…',
+  'Asking Verizon’s 5G to hold still…',
+  'Eyeballing the median household income…',
+  'Sorting opportunities by audacity…',
+  'Annotating launch-radar pings…',
+  'Soldering hexagons together…',
+  'Briefly checking on Project Kuiper…'
+];
+
+function pickShuffled<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 export default function ReportLoading() {
   const [step, setStep] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [messages] = useState(() => pickShuffled(MESSAGES));
+  const [msgIdx, setMsgIdx] = useState(0);
+  const [fade, setFade] = useState(true);
 
   useEffect(() => {
     const stepEvery = 3500;
@@ -26,12 +72,24 @@ export default function ReportLoading() {
     };
   }, []);
 
+  // Cycle funny messages every ~2.2s with a brief fade.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setMsgIdx((i) => (i + 1) % messages.length);
+        setFade(true);
+      }, 220);
+    }, 2200);
+    return () => clearInterval(id);
+  }, [messages.length]);
+
   // 45s is the Hotrod deadline; ramp the bar to ~95% over that interval.
   const pct = Math.min(95, (elapsed / 45_000) * 100);
+  const seconds = (elapsed / 1000).toFixed(1);
 
   return (
     <div className="mx-auto max-w-7xl px-6 pb-20 pt-8">
-      {/* Skeleton hero */}
       <section className="panel-dark relative overflow-hidden px-8 py-14 sm:px-14 sm:py-16">
         <div className="absolute inset-0 -z-0 aurora-dark opacity-80" />
         <div className="absolute inset-0 -z-0 bg-gradient-to-b from-transparent via-ink-900/20 to-ink-900/70" />
@@ -41,9 +99,7 @@ export default function ReportLoading() {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
             <span>Building briefing</span>
             <span className="text-white/30">·</span>
-            <span className="font-mono normal-case text-white/50">
-              {(elapsed / 1000).toFixed(1)}s elapsed
-            </span>
+            <span className="font-mono normal-case text-white/50">{seconds}s elapsed</span>
           </div>
 
           <h1 className="display text-5xl text-white sm:text-7xl">
@@ -53,18 +109,41 @@ export default function ReportLoading() {
             your market…
           </h1>
 
-          {/* Progress bar */}
-          <div className="space-y-3">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+          {/* Cycling silly message */}
+          <p
+            className={`min-h-[1.5rem] text-base text-white/80 transition-opacity duration-200 ${
+              fade ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            {messages[msgIdx]}
+          </p>
+
+          {/* Progress bar with explicit percentage */}
+          <div className="space-y-2">
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-accent-500 via-fuchsia-500 to-pink-500 transition-all duration-200"
+                className="h-full rounded-full bg-gradient-to-r from-accent-500 via-fuchsia-500 to-pink-500 shadow-[0_0_24px_-2px_rgba(236,72,153,0.6)] transition-all duration-200"
                 style={{ width: `${pct}%` }}
               />
+              {/* Animated shimmer over the filled section */}
+              <div
+                className="absolute inset-y-0 left-0 rounded-full opacity-40 mix-blend-overlay"
+                style={{
+                  width: `${pct}%`,
+                  backgroundImage:
+                    'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 1.6s linear infinite'
+                }}
+              />
             </div>
-            <p className="text-sm text-white/70">
-              <span className="font-medium text-white">{STAGES[step].label}</span>
-              <span className="ml-2 text-white/50">— {STAGES[step].detail}</span>
-            </p>
+            <div className="flex items-center justify-between text-xs text-white/60">
+              <span>
+                <span className="font-medium text-white">{STAGES[step].label}</span>
+                <span className="ml-2 text-white/50">— {STAGES[step].detail}</span>
+              </span>
+              <span className="font-mono text-white/80">{Math.round(pct)}%</span>
+            </div>
           </div>
 
           {/* Stage checklist */}
@@ -73,11 +152,7 @@ export default function ReportLoading() {
               <li
                 key={s.label}
                 className={`flex items-center gap-3 text-sm transition ${
-                  i < step
-                    ? 'text-white/40'
-                    : i === step
-                      ? 'text-white'
-                      : 'text-white/30'
+                  i < step ? 'text-white/40' : i === step ? 'text-white' : 'text-white/30'
                 }`}
               >
                 <span
@@ -92,14 +167,14 @@ export default function ReportLoading() {
                   {i < step ? '✓' : i === step ? <Spinner /> : i + 1}
                 </span>
                 <span>{s.label}</span>
-                <span className="text-xs text-white/40">{s.detail}</span>
+                <span className="hidden text-xs text-white/40 sm:inline">{s.detail}</span>
               </li>
             ))}
           </ul>
 
           <p className="text-xs text-white/40">
-            First scan against a fresh function instance can take 20–45s while the FCC BDC index warms.
-            Subsequent runs from the same instance are near-instant.
+            First scan against a fresh function instance can take a few seconds while the FCC BDC index
+            warms. Subsequent runs from the same instance are near-instant.
           </p>
         </div>
       </section>
