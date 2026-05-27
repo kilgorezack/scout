@@ -12,18 +12,22 @@ export type ProviderInZip = {
   locationsServed: number;
 };
 
-// Each provider declares the states it actually operates in. A provider is
-// only considered for a ZIP if that ZIP's state is in its footprint.
-// `reach` is then the per-ZIP probability *within* that footprint — capturing
-// the fact that even within their states, providers don't pass every address.
-// `states: '*'` = nationwide (satellites, the big FWAs).
+// Each provider declares the geography it actually operates in.
+//   `states: '*'`        → nationwide (satellites, the big FWAs)
+//   `states: ['XX', …]`  → state-level footprint
+//   `prefixes: ['592']`  → narrower 3-digit ZIP-prefix footprint (rural
+//                          coops, municipals, small CLECs)
+// If `prefixes` is set, it takes precedence over `states` — the provider
+// only appears in ZIPs whose first three digits match. `reach` is the
+// per-ZIP probability *within* the footprint.
 type ProviderSpec = {
   name: string;
   tech: Technology;
   down: number;
   up: number;
   reach: number;
-  states: '*' | string[];
+  states?: '*' | string[];
+  prefixes?: string[];
 };
 
 const NATIONAL_PROVIDERS: ProviderSpec[] = [
@@ -124,7 +128,46 @@ const NATIONAL_PROVIDERS: ProviderSpec[] = [
   { name: 'Rise Broadband',         tech: 'FWA',       down: 250,  up: 25,   reach: 0.50, states: [
     'TX','OK','KS','NE','CO','NM','ND','SD','MN','IA','MO','NV','AZ','UT','ID','IL'
   ]},
-  { name: 'Nextlink Internet',      tech: 'FWA',       down: 500,  up: 50,   reach: 0.35, states: ['TX','OK','KS','NE','IA','MO'] }
+  { name: 'Nextlink Internet',      tech: 'FWA',       down: 500,  up: 50,   reach: 0.35, states: ['TX','OK','KS','NE','IA','MO'] },
+
+  // -----------------------------------------------------------------------
+  // Rural / regional cooperatives & small ILECs — bound to specific
+  // 3-digit ZIP prefixes (the relevant USPS SCFs). This is a partial list;
+  // real BDC data covers thousands more. Wire up the Supabase
+  // bdc_zip_provider table via scripts/etl/fcc_bdc.ts for complete coverage.
+  // -----------------------------------------------------------------------
+
+  // Montana
+  { name: 'Nemont',                 tech: 'Fiber', down: 1000, up: 1000, reach: 0.90, prefixes: ['592'] },                  // NE MT / NW ND coop
+  { name: 'Mid-Rivers Communications', tech: 'Fiber', down: 1000, up: 1000, reach: 0.85, prefixes: ['593'] },               // E MT (Miles City SCF)
+  { name: 'Triangle Communications', tech: 'Fiber', down: 1000, up: 1000, reach: 0.80, prefixes: ['594','595'] },           // N Central MT
+  { name: '3 Rivers Communications', tech: 'Fiber', down: 1000, up: 1000, reach: 0.80, prefixes: ['596','597'] },           // SW MT
+  { name: 'Blackfoot Communications', tech: 'Fiber', down: 1000, up: 1000, reach: 0.75, prefixes: ['598','599'] },          // W MT
+
+  // North Dakota
+  { name: 'BEK Communications',     tech: 'Fiber', down: 1000, up: 1000, reach: 0.75, prefixes: ['584','585'] },            // Central / W ND
+  { name: 'Consolidated Telcom (ND)', tech: 'Fiber', down: 1000, up: 1000, reach: 0.70, prefixes: ['580','581','582'] },    // E ND
+
+  // Plains / Midwest cooperatives
+  { name: 'Allo Communications',    tech: 'Fiber', down: 2000, up: 2000, reach: 0.60, states: ['NE','CO','AZ'] },           // NE/CO/AZ fiber overbuilder
+  { name: 'Pinpoint Communications', tech: 'Fiber', down: 1000, up: 1000, reach: 0.70, prefixes: ['686','687','688'] },     // S NE
+  { name: 'Pioneer Communications', tech: 'Fiber', down: 1000, up: 1000, reach: 0.70, prefixes: ['678','679'] },            // SW KS
+
+  // Texas Hill Country / rural TX
+  { name: 'Hill Country Telephone Coop', tech: 'Fiber', down: 1000, up: 1000, reach: 0.75, prefixes: ['786','788'] },        // TX Hill Country
+
+  // Appalachia / SE
+  { name: 'Shentel / Glo Fiber',    tech: 'Fiber', down: 2000, up: 2000, reach: 0.55, states: ['VA','WV','PA','MD'] },      // VA/WV/PA overbuilder
+  { name: 'TruVista',               tech: 'Fiber', down: 1000, up: 1000, reach: 0.60, states: ['SC','GA'] },                // SC/GA rural
+  { name: 'Hargray',                tech: 'Fiber', down: 2000, up: 2000, reach: 0.60, states: ['SC','GA','AL','FL'] },      // Lowcountry / SE
+
+  // New England
+  { name: 'NEK Broadband',          tech: 'Fiber', down: 1000, up: 1000, reach: 0.75, prefixes: ['058','059'] },            // VT Northeast Kingdom
+  { name: 'VTel Wireless',          tech: 'Fiber', down: 1000, up: 1000, reach: 0.60, states: ['VT'] },                     // Vermont Telephone
+
+  // Municipal
+  { name: 'EPB Fiber Optics',       tech: 'Fiber', down: 25000, up: 25000, reach: 0.85, prefixes: ['373','374'] },          // Chattanooga TN
+  { name: 'Greenlight Networks',    tech: 'Fiber', down: 2000, up: 2000, reach: 0.55, prefixes: ['144','146'] }              // Upstate NY (Rochester area)
 ];
 
 function seededRandom(seed: string): () => number {
@@ -140,9 +183,13 @@ function stubProvidersForZip(zip: string): ProviderInZip[] {
   const rnd = seededRandom(`bdc-${zip}`);
   const totalLocations = 1500 + Math.floor(rnd() * 7500);
   const state = zipToState(zip);
+  const prefix = zip.slice(0, 3);
   const out: ProviderInZip[] = [];
   for (const p of NATIONAL_PROVIDERS) {
-    if (p.states !== '*') {
+    // Prefix binding takes precedence over state binding when set.
+    if (p.prefixes) {
+      if (!p.prefixes.includes(prefix)) continue;
+    } else if (p.states && p.states !== '*') {
       if (!state || !p.states.includes(state)) continue;
     }
     if (rnd() > p.reach) continue;
