@@ -1,5 +1,6 @@
 import { getSupabase } from './supabase';
 import { zipToState } from './zip-state';
+import { hotrodConfigured, hotrodProvidersForZips } from './hotrod';
 
 export type Technology = 'Fiber' | 'Cable' | 'FWA' | 'DSL' | 'Satellite';
 
@@ -206,7 +207,39 @@ function stubProvidersForZip(zip: string): ProviderInZip[] {
   return out;
 }
 
+// Collapse multiple rows for the same (zip, provider) — e.g. a provider with
+// both a fiber and a fixed-wireless file in Hotrod — into a single entry
+// that lists all of their technologies and keeps the best speeds.
+function mergeRows(rows: ProviderInZip[]): ProviderInZip[] {
+  const merged = new Map<string, ProviderInZip>();
+  for (const r of rows) {
+    const key = `${r.zip}|${r.providerName}`;
+    const existing = merged.get(key);
+    if (existing) {
+      for (const t of r.technologies) {
+        if (!existing.technologies.includes(t)) existing.technologies.push(t);
+      }
+      existing.maxDownMbps = Math.max(existing.maxDownMbps, r.maxDownMbps);
+      existing.maxUpMbps = Math.max(existing.maxUpMbps, r.maxUpMbps);
+      existing.locationsServed = Math.max(existing.locationsServed, r.locationsServed);
+    } else {
+      merged.set(key, { ...r, technologies: [...r.technologies] });
+    }
+  }
+  return Array.from(merged.values());
+}
+
 export async function providersForZips(zips: string[]): Promise<ProviderInZip[]> {
+  // Prefer the real Hotrod (FCC BDC via Firebase Storage) data when configured.
+  if (hotrodConfigured()) {
+    try {
+      const rows = await hotrodProvidersForZips(zips);
+      if (rows && rows.length > 0) return mergeRows(rows);
+    } catch {
+      // fall through to Supabase / stub
+    }
+  }
+
   const supabase = getSupabase();
   if (!supabase) return zips.flatMap(stubProvidersForZip);
 
