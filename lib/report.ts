@@ -71,7 +71,25 @@ export async function loadReportInput(slug: string): Promise<ReportInput | null>
 }
 
 export async function buildReport(input: ReportInput): Promise<ReportPayload> {
-  const providersResult = await providersForZipsWithSource(input.zips);
+  // Every awaited call below is wrapped so a single failure can't blank the
+  // whole briefing — we'd rather render with partial data than a 500.
+  let providersResult: ProvidersResult;
+  try {
+    providersResult = await providersForZipsWithSource(input.zips);
+  } catch (e) {
+    providersResult = {
+      rows: [],
+      source: 'hotrod',
+      hotrod: {
+        bucket: '',
+        zipsResolved: Object.fromEntries(input.zips.map((z) => [z, 0])),
+        providersScanned: 0,
+        matchesFound: 0,
+        totalMillis: 0,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      }
+    };
+  }
   const providersByZip = providersResult.rows;
   const ownLower = (input.companyName ?? '').trim().toLowerCase();
   const filtered = ownLower
@@ -82,20 +100,33 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   const providerNames = competitors.map((c) => c.providerName);
 
   const [reviewsMap, news, demographics] = await Promise.all([
-    reviewsForProviders(providerNames),
-    newsForProviders(providerNames),
-    demographicsForZips(input.zips)
+    reviewsForProviders(providerNames).catch(() => new Map()),
+    newsForProviders(providerNames).catch(() => []),
+    demographicsForZips(input.zips).catch(() => input.zips.map((z) => ({
+      zip: z,
+      population: 0,
+      households: 0,
+      housingUnits: 0,
+      medianHouseholdIncome: 0,
+      ownerOccupiedPct: 0,
+      businessEstablishments: 0
+    })))
   ]);
 
   const reviews: Record<string, ProviderReview> = {};
   for (const [k, v] of reviewsMap.entries()) reviews[k] = v;
 
-  const opportunities = generateOpportunities({
-    providersByZip: filtered,
-    demographics,
-    news,
-    ownCompany: input.companyName
-  });
+  let opportunities: Opportunity[] = [];
+  try {
+    opportunities = generateOpportunities({
+      providersByZip: filtered,
+      demographics,
+      news,
+      ownCompany: input.companyName
+    });
+  } catch {
+    opportunities = [];
+  }
 
   return {
     ...input,

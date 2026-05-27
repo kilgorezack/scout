@@ -233,7 +233,17 @@ export async function hotrodProvidersForZips(
   type Hit = { providerName: string; tech: string; hexes: Set<string> };
   const hits: Hit[] = [];
 
-  await mapPool(tasks, 80, async (t) => {
+  // Hard time budget — return what we have rather than letting the function
+  // get killed by the Vercel timeout, which produces an opaque 500.
+  const DEADLINE_MS = 45_000;
+  const deadline = t0 + DEADLINE_MS;
+  let timedOut = false;
+
+  await mapPool(tasks, 150, async (t) => {
+    if (Date.now() > deadline) {
+      timedOut = true;
+      return;
+    }
     const hexes = await loadProviderHexes(t.providerId, t.tech);
     if (hexes.size === 0) return;
     let matched: Set<string> | null = null;
@@ -271,7 +281,8 @@ export async function hotrodProvidersForZips(
       zipsResolved: Object.fromEntries(zips.map((z) => [z, zipHexMap.get(z)?.size ?? 0])),
       providersScanned: providers.length,
       matchesFound: hits.length,
-      totalMillis: Date.now() - t0
+      totalMillis: Date.now() - t0,
+      error: timedOut ? `Stopped after ${DEADLINE_MS}ms — returning partial results` : undefined
     }
   };
 }
