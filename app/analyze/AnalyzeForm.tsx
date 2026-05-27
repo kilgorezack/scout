@@ -38,39 +38,44 @@ export default function AnalyzeForm() {
   }
 
   return (
-    <form className="scout-card p-6" onSubmit={onSubmit}>
+    <form className="scout-card p-7" onSubmit={onSubmit}>
       <label className="block">
-        <span className="text-sm font-medium text-slate-800">ZIP codes</span>
-        <span className="block text-xs text-slate-500">One per line, or comma-separated. 5-digit ZIPs only.</span>
+        <span className="block text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">ZIP codes</span>
+        <span className="mt-1 block text-sm text-ink-600">One per line or comma-separated. 5-digit only.</span>
         <textarea
           value={zipsRaw}
           onChange={(e) => setZipsRaw(e.target.value)}
           rows={6}
           placeholder={'94027\n30303\n73301'}
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+          className="mt-3 w-full rounded-xl border border-ink-900/10 bg-paper px-4 py-3 font-mono text-sm text-ink-900 placeholder:text-ink-400 focus:border-signal-500 focus:outline-none focus:ring-4 focus:ring-signal-500/15"
         />
-        <span className="mt-1 block text-xs text-slate-500">
-          {parsed.length} valid ZIP{parsed.length === 1 ? '' : 's'} detected.
+        <span className="mt-2 block text-xs text-ink-500">
+          <span className="font-mono">{parsed.length}</span> valid ZIP{parsed.length === 1 ? '' : 's'} detected.
         </span>
       </label>
 
-      <label className="mt-4 block">
-        <span className="text-sm font-medium text-slate-800">Your company name (optional)</span>
-        <span className="block text-xs text-slate-500">Used to exclude you from the competitor list.</span>
+      <label className="mt-6 block">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">Your company</span>
+        <span className="mt-1 block text-sm text-ink-600">Optional. Used to exclude you from the competitor list.</span>
         <input
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
           placeholder="Acme Fiber"
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+          className="mt-3 w-full rounded-xl border border-ink-900/10 bg-paper px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-signal-500 focus:outline-none focus:ring-4 focus:ring-signal-500/15"
         />
       </label>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="mt-5 rounded-xl border border-ember-300/40 bg-ember-50 px-4 py-3 text-sm text-ember-700">
+          {error}
+        </div>
+      )}
 
-      <div className="mt-6 flex items-center justify-end">
+      <div className="mt-7 flex items-center justify-between">
+        <span className="text-xs text-ink-500">Free · No login · Shareable</span>
         <button type="submit" className="scout-btn" disabled={submitting || parsed.length === 0}>
           {submitting ? <Loader2 className="animate-spin" size={16} /> : <ArrowRight size={16} />}
-          {submitting ? 'Building report…' : 'Generate report'}
+          {submitting ? 'Building briefing…' : 'Generate briefing'}
         </button>
       </div>
     </form>

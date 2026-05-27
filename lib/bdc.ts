@@ -11,21 +11,53 @@ export type ProviderInZip = {
   locationsServed: number;
 };
 
+// Reach is the probability a provider shows up in any given ZIP.
+// Tier-1 cable + FWA + satellite providers are effectively always present;
+// regional cable/fiber/DSL appear probabilistically.
 const NATIONAL_PROVIDERS: Array<{ name: string; tech: Technology; down: number; up: number; reach: number }> = [
-  { name: 'Comcast Xfinity',     tech: 'Cable',     down: 1200, up: 200,  reach: 0.78 },
-  { name: 'Charter Spectrum',    tech: 'Cable',     down: 1000, up: 35,   reach: 0.62 },
-  { name: 'AT&T Fiber',          tech: 'Fiber',     down: 5000, up: 5000, reach: 0.34 },
-  { name: 'Verizon Fios',        tech: 'Fiber',     down: 2300, up: 2300, reach: 0.18 },
-  { name: 'Verizon 5G Home',     tech: 'FWA',       down: 1000, up: 50,   reach: 0.42 },
-  { name: 'T-Mobile Home Internet', tech: 'FWA',    down: 415,  up: 80,   reach: 0.55 },
-  { name: 'Frontier Fiber',      tech: 'Fiber',     down: 5000, up: 5000, reach: 0.22 },
-  { name: 'Cox Communications',  tech: 'Cable',     down: 1000, up: 100,  reach: 0.21 },
-  { name: 'Optimum',             tech: 'Cable',     down: 1000, up: 100,  reach: 0.16 },
-  { name: 'CenturyLink',         tech: 'DSL',       down: 100,  up: 20,   reach: 0.31 },
-  { name: 'Starlink',            tech: 'Satellite', down: 220,  up: 20,   reach: 0.95 },
-  { name: 'HughesNet',           tech: 'Satellite', down: 100,  up: 5,    reach: 0.95 },
-  { name: 'Astound Broadband',   tech: 'Cable',     down: 1500, up: 50,   reach: 0.08 },
-  { name: 'WOW! Internet',       tech: 'Cable',     down: 1200, up: 50,   reach: 0.06 }
+  // Always-on backbone (satellite + national FWA)
+  { name: 'Starlink',                    tech: 'Satellite', down: 220,  up: 20,   reach: 1.00 },
+  { name: 'HughesNet',                   tech: 'Satellite', down: 100,  up: 5,    reach: 1.00 },
+  { name: 'Viasat',                      tech: 'Satellite', down: 150,  up: 3,    reach: 1.00 },
+  { name: 'T-Mobile Home Internet',      tech: 'FWA',       down: 415,  up: 80,   reach: 0.95 },
+  { name: 'Verizon 5G Home',             tech: 'FWA',       down: 1000, up: 75,   reach: 0.85 },
+  { name: 'AT&T Internet Air',           tech: 'FWA',       down: 300,  up: 50,   reach: 0.70 },
+
+  // Tier-1 cable MSOs
+  { name: 'Comcast Xfinity',             tech: 'Cable',     down: 2000, up: 300,  reach: 0.80 },
+  { name: 'Charter Spectrum',            tech: 'Cable',     down: 1000, up: 35,   reach: 0.78 },
+  { name: 'Cox Communications',          tech: 'Cable',     down: 2000, up: 100,  reach: 0.45 },
+  { name: 'Optimum (Altice)',            tech: 'Cable',     down: 1000, up: 100,  reach: 0.35 },
+
+  // Tier-1 fiber / ILEC fiber
+  { name: 'AT&T Fiber',                  tech: 'Fiber',     down: 5000, up: 5000, reach: 0.55 },
+  { name: 'Verizon Fios',                tech: 'Fiber',     down: 2300, up: 2300, reach: 0.30 },
+  { name: 'Frontier Fiber',              tech: 'Fiber',     down: 5000, up: 5000, reach: 0.32 },
+  { name: 'Quantum Fiber (Lumen)',       tech: 'Fiber',     down: 8000, up: 8000, reach: 0.30 },
+  { name: 'Kinetic by Windstream',       tech: 'Fiber',     down: 2000, up: 2000, reach: 0.28 },
+  { name: 'Brightspeed',                 tech: 'Fiber',     down: 2000, up: 2000, reach: 0.22 },
+  { name: 'Ziply Fiber',                 tech: 'Fiber',     down: 5000, up: 5000, reach: 0.15 },
+  { name: 'Google Fiber',                tech: 'Fiber',     down: 8000, up: 8000, reach: 0.10 },
+  { name: 'MetroNet',                    tech: 'Fiber',     down: 5000, up: 5000, reach: 0.12 },
+  { name: 'GoNetspeed',                  tech: 'Fiber',     down: 2000, up: 2000, reach: 0.10 },
+  { name: 'Lumos Fiber',                 tech: 'Fiber',     down: 2000, up: 2000, reach: 0.10 },
+
+  // Regional cable
+  { name: 'Mediacom',                    tech: 'Cable',     down: 1000, up: 50,   reach: 0.22 },
+  { name: 'Sparklight (Cable One)',      tech: 'Cable',     down: 1000, up: 50,   reach: 0.18 },
+  { name: 'Astound Broadband',           tech: 'Cable',     down: 1500, up: 50,   reach: 0.18 },
+  { name: 'WOW! Internet',               tech: 'Cable',     down: 1200, up: 50,   reach: 0.14 },
+  { name: 'Breezeline',                  tech: 'Cable',     down: 1500, up: 50,   reach: 0.12 },
+
+  // DSL ILECs (legacy copper)
+  { name: 'CenturyLink',                 tech: 'DSL',       down: 100,  up: 20,   reach: 0.40 },
+  { name: 'Windstream',                  tech: 'DSL',       down: 100,  up: 20,   reach: 0.25 },
+  { name: 'TDS Telecom',                 tech: 'DSL',       down: 100,  up: 20,   reach: 0.20 },
+  { name: 'Consolidated Communications', tech: 'DSL',       down: 100,  up: 20,   reach: 0.18 },
+
+  // WISPs
+  { name: 'Rise Broadband',              tech: 'FWA',       down: 250,  up: 25,   reach: 0.25 },
+  { name: 'Nextlink Internet',           tech: 'FWA',       down: 500,  up: 50,   reach: 0.15 }
 ];
 
 function seededRandom(seed: string): () => number {
@@ -51,17 +83,6 @@ function stubProvidersForZip(zip: string): ProviderInZip[] {
       maxDownMbps: p.down,
       maxUpMbps: p.up,
       locationsServed: Math.round(totalLocations * share)
-    });
-  }
-  // Always include at least one satellite + something else
-  if (!out.some((o) => o.providerName === 'Starlink')) {
-    out.push({
-      zip,
-      providerName: 'Starlink',
-      technologies: ['Satellite'],
-      maxDownMbps: 220,
-      maxUpMbps: 20,
-      locationsServed: totalLocations
     });
   }
   return out;

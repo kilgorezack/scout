@@ -12,13 +12,13 @@ import NewsTab from './tabs/NewsTab';
 import AIReadinessTab from './tabs/AIReadinessTab';
 
 const TABS = [
-  { id: 'overview',    label: 'Overview' },
+  { id: 'overview', label: 'Overview' },
   { id: 'opportunities', label: 'Opportunities' },
   { id: 'competitors', label: 'Competitors' },
-  { id: 'coverage',    label: 'Coverage' },
-  { id: 'demographics',label: 'Demographics' },
-  { id: 'news',        label: 'Launch radar' },
-  { id: 'ai',          label: 'AI readiness' }
+  { id: 'coverage', label: 'Coverage' },
+  { id: 'demographics', label: 'Demographics' },
+  { id: 'news', label: 'Launch radar' },
+  { id: 'ai', label: 'AI readiness' }
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -27,18 +27,18 @@ export default function ReportTabs({ report }: { report: ReportPayload }) {
   const [active, setActive] = useState<TabId>('overview');
 
   return (
-    <div className="mt-8">
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-1 border-b border-slate-200">
+    <div className="mt-10">
+      <div className="no-scrollbar overflow-x-auto">
+        <div className="inline-flex min-w-max items-center gap-1 rounded-full border border-ink-900/10 bg-paper-50 p-1 shadow-sm">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setActive(t.id)}
               className={cn(
-                'border-b-2 px-4 py-2.5 text-sm font-medium transition',
+                'rounded-full px-4 py-1.5 text-[13px] font-medium transition',
                 active === t.id
-                  ? 'border-brand-600 text-brand-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  ? 'bg-ink-900 text-paper-50 shadow-sm'
+                  : 'text-ink-600 hover:bg-ink-900/[0.05] hover:text-ink-900'
               )}
             >
               {t.label}
@@ -47,7 +47,7 @@ export default function ReportTabs({ report }: { report: ReportPayload }) {
         </div>
       </div>
 
-      <div className="pt-6">
+      <div className="pt-8">
         {active === 'overview' && <OverviewTab report={report} />}
         {active === 'opportunities' && <OpportunitiesTab report={report} />}
         {active === 'competitors' && <CompetitorsTab report={report} />}
