@@ -90,7 +90,13 @@ function SourceBadge({
   diagnostics
 }: {
   source: 'hotrod' | 'supabase' | 'stub';
-  diagnostics?: { providersScanned: number; matchesFound: number; totalMillis: number; error?: string };
+  diagnostics?: {
+    providersScanned: number;
+    matchesFound: number;
+    totalMillis: number;
+    candidatesFromIndex?: number;
+    error?: string;
+  };
 }) {
   const labels = {
     hotrod: { text: 'Live FCC BDC', tone: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30' },

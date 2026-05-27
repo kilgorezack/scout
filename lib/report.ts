@@ -83,6 +83,7 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
       hotrod: {
         bucket: '',
         zipsResolved: Object.fromEntries(input.zips.map((z) => [z, 0])),
+        candidatesFromIndex: 0,
         providersScanned: 0,
         matchesFound: 0,
         totalMillis: 0,
