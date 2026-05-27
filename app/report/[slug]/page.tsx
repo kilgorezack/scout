@@ -35,6 +35,8 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
             <span className="font-mono normal-case tracking-normal text-white/50">
               {report.zips.join(' · ')}
             </span>
+            <span className="text-white/30">·</span>
+            <SourceBadge source={report.dataSource} diagnostics={report.hotrodDiagnostics} />
           </div>
 
           <h1 className="display text-5xl text-white sm:text-7xl">
@@ -80,6 +82,36 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
         Shareable link · <span className="font-mono text-ink-700">/report/{slug.slice(0, 16)}{slug.length > 16 ? '…' : ''}</span>
       </p>
     </div>
+  );
+}
+
+function SourceBadge({
+  source,
+  diagnostics
+}: {
+  source: 'hotrod' | 'supabase' | 'stub';
+  diagnostics?: { providersScanned: number; matchesFound: number; totalMillis: number };
+}) {
+  const labels = {
+    hotrod: { text: 'Live FCC BDC', tone: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30' },
+    supabase: { text: 'Supabase BDC', tone: 'bg-accent-400/10 text-accent-300 border-accent-400/30' },
+    stub: { text: 'Seeded sample data', tone: 'bg-amber-400/10 text-amber-300 border-amber-400/30' }
+  } as const;
+  const l = labels[source];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${l.tone}`}
+      title={
+        diagnostics
+          ? `${diagnostics.providersScanned} providers scanned · ${diagnostics.matchesFound} matched · ${diagnostics.totalMillis}ms`
+          : undefined
+      }
+    >
+      {l.text}
+      {diagnostics ? (
+        <span className="font-mono normal-case tracking-normal opacity-70">· {diagnostics.matchesFound} hits</span>
+      ) : null}
+    </span>
   );
 }
 

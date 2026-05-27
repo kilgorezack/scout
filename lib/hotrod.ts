@@ -13,19 +13,23 @@
 //
 // Bucket is configured public-read; no auth needed.
 
-import { latLngToCell, gridDisk } from 'h3-js';
+import { latLngToCell, gridDisk, polygonToCells } from 'h3-js';
 import type { ProviderInZip, Technology } from './bdc';
 
 const BUCKET = process.env.HOTROD_BUCKET || 'hotrod-7a59d.firebasestorage.app';
 const ENABLED = process.env.HOTROD_ENABLED !== 'false';
 const RES = 8;
-const RING_K = 12; // gridDisk radius; ~12-18 km coverage around centroid
+const RING_K = 12; // gridDisk fallback radius if polygon lookup fails
 
 const url = {
   providers: () => `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/providers.json?alt=media`,
   hexes: (id: string, tech: string) =>
     `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(`hexes/${id}_${tech}.json`)}?alt=media`,
+  zcta: (zip: string) =>
+    // Census TIGERweb ArcGIS ZCTA5 layer. Returns the ZIP's polygon boundary as GeoJSON.
+    `https://tigerweb.geo.census.gov/arcgis/rest/services/Census2020/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/4/query?where=BASENAME%3D%27${zip}%27&outFields=BASENAME&returnGeometry=true&f=geojson&outSR=4326`,
   zipCentroid: (zip: string) =>
+    // Fallback if the ZCTA polygon lookup fails.
     `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(zip)}&benchmark=2020&format=json`
 };
 
@@ -39,9 +43,6 @@ export const TECH_LABEL: Record<string, Technology> = {
   '70': 'FWA'
 };
 
-// Default placeholder speed per technology. Real BDC includes maxDown/maxUp
-// per provider per location, but the user's Firebase index doesn't carry
-// speeds — only hex coverage — so we use representative defaults.
 const TECH_DEFAULT_SPEEDS: Record<string, { down: number; up: number }> = {
   '10': { down: 100,   up: 20 },
   '40': { down: 1200,  up: 100 },
@@ -50,7 +51,6 @@ const TECH_DEFAULT_SPEEDS: Record<string, { down: number; up: number }> = {
   '70': { down: 300,   up: 30 }
 };
 
-// Module-level caches — survive within a warm serverless function instance.
 let providersPromise: Promise<RemoteProvider[]> | null = null;
 const hexSetCache = new Map<string, Promise<Set<string>>>();
 const zipHexCache = new Map<string, Promise<Set<string>>>();
@@ -85,8 +85,27 @@ function loadProviderHexes(id: string, tech: string): Promise<Set<string>> {
   return p;
 }
 
-async function zipCentroid(zip: string): Promise<[number, number] | null> {
-  // Census public geocoder. Returns lng/lat under `coordinates.x` / `.y`.
+// Census ArcGIS ZCTA polygon → array of [lng, lat] rings (GeoJSON ordering).
+async function zipPolygon(zip: string): Promise<number[][][] | null> {
+  type GeoJSONFeature = {
+    geometry?:
+      | { type: 'Polygon'; coordinates: number[][][] }
+      | { type: 'MultiPolygon'; coordinates: number[][][][] };
+  };
+  const data = await fetchJson<{ features?: GeoJSONFeature[] }>(url.zcta(zip), 60 * 60 * 24 * 30);
+  const geom = data?.features?.[0]?.geometry;
+  if (!geom) return null;
+  if (geom.type === 'Polygon') {
+    return geom.coordinates as number[][][]; // [outerRing, ...holes]
+  }
+  if (geom.type === 'MultiPolygon') {
+    // Flatten all polygon outer rings; polygonToCells handles each ring set.
+    return geom.coordinates.flat() as number[][][];
+  }
+  return null;
+}
+
+async function zipCentroidFallback(zip: string): Promise<[number, number] | null> {
   const data = await fetchJson<{
     result?: { addressMatches?: Array<{ coordinates?: { x: number; y: number } }> };
   }>(url.zipCentroid(zip), 60 * 60 * 24 * 30);
@@ -99,7 +118,29 @@ function getZipHexes(zip: string): Promise<Set<string>> {
   let p = zipHexCache.get(zip);
   if (!p) {
     p = (async () => {
-      const c = await zipCentroid(zip);
+      // Primary path: real ZCTA polygon → exact hex coverage.
+      const rings = await zipPolygon(zip);
+      if (rings && rings.length > 0) {
+        const cells = new Set<string>();
+        // The first ring is the outer boundary; later rings are holes.
+        // h3-js polygonToCells handles holes correctly when passed via the
+        // second-level array structure. For simplicity we use just outer rings.
+        for (const ring of rings) {
+          if (!ring || ring.length < 4) continue;
+          // ring is array of [lng, lat] in GeoJSON, h3 wants [lat, lng] unless
+          // we pass an isGeoJson-style polygon. We use the explicit form.
+          const polygon = [ring.map((p) => [p[1], p[0]] as [number, number])];
+          try {
+            for (const c of polygonToCells(polygon, RES)) cells.add(c);
+          } catch {
+            // ignore individual ring failures
+          }
+        }
+        if (cells.size > 0) return cells;
+      }
+
+      // Fallback: centroid + gridDisk for ZIPs whose polygon lookup fails.
+      const c = await zipCentroidFallback(zip);
       if (!c) return new Set<string>();
       const center = latLngToCell(c[0], c[1], RES);
       return new Set<string>(gridDisk(center, RING_K));
@@ -109,9 +150,6 @@ function getZipHexes(zip: string): Promise<Set<string>> {
   return p;
 }
 
-/**
- * Run a bounded-concurrency map over an array.
- */
 async function mapPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
   let i = 0;
@@ -130,10 +168,20 @@ export function hotrodConfigured(): boolean {
   return ENABLED && Boolean(BUCKET);
 }
 
-export async function hotrodProvidersForZips(zips: string[]): Promise<ProviderInZip[] | null> {
-  if (!hotrodConfigured()) return null;
+export type HotrodDiagnostics = {
+  bucket: string;
+  zipsResolved: Record<string, number>;
+  providersScanned: number;
+  matchesFound: number;
+  totalMillis: number;
+};
 
-  // 1. Compute the H3 hex set for each ZIP (centroid + gridDisk).
+export async function hotrodProvidersForZips(
+  zips: string[]
+): Promise<{ rows: ProviderInZip[]; diagnostics: HotrodDiagnostics } | null> {
+  if (!hotrodConfigured()) return null;
+  const t0 = Date.now();
+
   const zipHexMap = new Map<string, Set<string>>();
   await Promise.all(
     zips.map(async (z) => {
@@ -143,20 +191,29 @@ export async function hotrodProvidersForZips(zips: string[]): Promise<ProviderIn
 
   const allZipHexes = new Set<string>();
   for (const s of zipHexMap.values()) for (const h of s) allZipHexes.add(h);
-  if (allZipHexes.size === 0) return null;
+  if (allZipHexes.size === 0) {
+    return {
+      rows: [],
+      diagnostics: {
+        bucket: BUCKET,
+        zipsResolved: Object.fromEntries(zips.map((z) => [z, 0])),
+        providersScanned: 0,
+        matchesFound: 0,
+        totalMillis: Date.now() - t0
+      }
+    };
+  }
 
-  // 2. Load the full provider list (cached after first call).
   const providers = await loadProviders();
   if (providers.length === 0) return null;
 
-  // 3. Build the (provider, tech) work list and run with bounded concurrency.
   type Task = { providerId: string; providerName: string; tech: string };
   const tasks: Task[] = [];
   for (const p of providers) {
     for (const t of p.techs) tasks.push({ providerId: p.id, providerName: p.name, tech: t });
   }
 
-  type Hit = { provider: RemoteProvider; tech: string; hexes: Set<string> };
+  type Hit = { providerName: string; tech: string; hexes: Set<string> };
   const hits: Hit[] = [];
 
   await mapPool(tasks, 80, async (t) => {
@@ -164,21 +221,14 @@ export async function hotrodProvidersForZips(zips: string[]): Promise<ProviderIn
     if (hexes.size === 0) return;
     let matched: Set<string> | null = null;
     for (const h of allZipHexes) {
-      if (hexes.has(h)) {
-        (matched ??= new Set()).add(h);
-      }
+      if (hexes.has(h)) (matched ??= new Set()).add(h);
     }
     if (matched) {
-      hits.push({
-        provider: { id: t.providerId, name: t.providerName, techs: [t.tech] },
-        tech: t.tech,
-        hexes: matched
-      });
+      hits.push({ providerName: t.providerName, tech: t.tech, hexes: matched });
     }
   });
 
-  // 4. Project each hit back onto the ZIPs that contain its matched hexes.
-  const out: ProviderInZip[] = [];
+  const rows: ProviderInZip[] = [];
   for (const hit of hits) {
     for (const zip of zips) {
       const zipHexes = zipHexMap.get(zip)!;
@@ -186,16 +236,25 @@ export async function hotrodProvidersForZips(zips: string[]): Promise<ProviderIn
       for (const h of hit.hexes) if (zipHexes.has(h)) count++;
       if (count === 0) continue;
       const speeds = TECH_DEFAULT_SPEEDS[hit.tech] ?? { down: 1000, up: 100 };
-      out.push({
+      rows.push({
         zip,
-        providerName: hit.provider.name,
+        providerName: hit.providerName,
         technologies: [TECH_LABEL[hit.tech] ?? 'Fiber'],
         maxDownMbps: speeds.down,
         maxUpMbps: speeds.up,
-        // H3 res-8 cells are ~0.7 km² each; rough placeholder of ~15 locations/hex.
         locationsServed: count * 15
       });
     }
   }
-  return out;
+
+  return {
+    rows,
+    diagnostics: {
+      bucket: BUCKET,
+      zipsResolved: Object.fromEntries(zips.map((z) => [z, zipHexMap.get(z)?.size ?? 0])),
+      providersScanned: providers.length,
+      matchesFound: hits.length,
+      totalMillis: Date.now() - t0
+    }
+  };
 }

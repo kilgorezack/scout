@@ -1,4 +1,4 @@
-import { providersForZips, summarizeByProvider, type ProviderInZip } from './bdc';
+import { providersForZipsWithSource, summarizeByProvider, type ProviderInZip, type ProvidersResult } from './bdc';
 import { reviewsForProviders, type ProviderReview } from './reviews';
 import { newsForProviders, type CompetitorNews } from './news';
 import { demographicsForZips, type ZipDemographics } from './census';
@@ -19,6 +19,8 @@ export type ReportPayload = ReportInput & {
   news: CompetitorNews[];
   demographics: ZipDemographics[];
   opportunities: Opportunity[];
+  dataSource: ProvidersResult['source'];
+  hotrodDiagnostics?: ProvidersResult['hotrod'];
 };
 
 // Slugs encode the input directly so they're self-contained across cold
@@ -69,7 +71,8 @@ export async function loadReportInput(slug: string): Promise<ReportInput | null>
 }
 
 export async function buildReport(input: ReportInput): Promise<ReportPayload> {
-  const providersByZip = await providersForZips(input.zips);
+  const providersResult = await providersForZipsWithSource(input.zips);
+  const providersByZip = providersResult.rows;
   const ownLower = (input.companyName ?? '').trim().toLowerCase();
   const filtered = ownLower
     ? providersByZip.filter((p) => !p.providerName.toLowerCase().includes(ownLower))
@@ -101,6 +104,8 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
     reviews,
     news,
     demographics,
-    opportunities
+    opportunities,
+    dataSource: providersResult.source,
+    hotrodDiagnostics: providersResult.hotrod
   };
 }

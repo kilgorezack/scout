@@ -229,50 +229,67 @@ function mergeRows(rows: ProviderInZip[]): ProviderInZip[] {
   return Array.from(merged.values());
 }
 
-export async function providersForZips(zips: string[]): Promise<ProviderInZip[]> {
-  // Prefer the real Hotrod (FCC BDC via Firebase Storage) data when configured.
+export type ProvidersResult = {
+  rows: ProviderInZip[];
+  source: 'hotrod' | 'supabase' | 'stub';
+  hotrod?: { providersScanned: number; matchesFound: number; totalMillis: number; zipsResolved: Record<string, number> };
+};
+
+export async function providersForZipsWithSource(zips: string[]): Promise<ProvidersResult> {
+  // Hotrod is authoritative when configured. We do NOT fall back to the stub
+  // catalog when Hotrod is on — the stub leaks providers that aren't really
+  // in the ZIP (e.g. Ziply Fiber showing up in NE Montana). An empty Hotrod
+  // result is a valid answer.
   if (hotrodConfigured()) {
     try {
-      const rows = await hotrodProvidersForZips(zips);
-      if (rows && rows.length > 0) return mergeRows(rows);
+      const r = await hotrodProvidersForZips(zips);
+      if (r) {
+        return { rows: mergeRows(r.rows), source: 'hotrod', hotrod: r.diagnostics };
+      }
     } catch {
-      // fall through to Supabase / stub
+      // network error -> fall through to Supabase, then stub
     }
   }
 
   const supabase = getSupabase();
-  if (!supabase) return zips.flatMap(stubProvidersForZip);
-
-  const { data, error } = await supabase
-    .from('bdc_zip_provider')
-    .select('zip, provider_name, technology, max_down_mbps, max_up_mbps, locations')
-    .in('zip', zips);
-
-  if (error || !data || data.length === 0) return zips.flatMap(stubProvidersForZip);
-
-  const merged = new Map<string, ProviderInZip>();
-  for (const row of data) {
-    const key = `${row.zip}|${row.provider_name}`;
-    const existing = merged.get(key);
-    if (existing) {
-      if (!existing.technologies.includes(row.technology as Technology)) {
-        existing.technologies.push(row.technology as Technology);
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('bdc_zip_provider')
+      .select('zip, provider_name, technology, max_down_mbps, max_up_mbps, locations')
+      .in('zip', zips);
+    if (!error && data && data.length > 0) {
+      const merged = new Map<string, ProviderInZip>();
+      for (const row of data) {
+        const key = `${row.zip}|${row.provider_name}`;
+        const existing = merged.get(key);
+        if (existing) {
+          if (!existing.technologies.includes(row.technology as Technology)) {
+            existing.technologies.push(row.technology as Technology);
+          }
+          existing.maxDownMbps = Math.max(existing.maxDownMbps, row.max_down_mbps ?? 0);
+          existing.maxUpMbps = Math.max(existing.maxUpMbps, row.max_up_mbps ?? 0);
+          existing.locationsServed = Math.max(existing.locationsServed, row.locations ?? 0);
+        } else {
+          merged.set(key, {
+            zip: row.zip,
+            providerName: row.provider_name,
+            technologies: [row.technology as Technology],
+            maxDownMbps: row.max_down_mbps ?? 0,
+            maxUpMbps: row.max_up_mbps ?? 0,
+            locationsServed: row.locations ?? 0
+          });
+        }
       }
-      existing.maxDownMbps = Math.max(existing.maxDownMbps, row.max_down_mbps ?? 0);
-      existing.maxUpMbps = Math.max(existing.maxUpMbps, row.max_up_mbps ?? 0);
-      existing.locationsServed = Math.max(existing.locationsServed, row.locations ?? 0);
-    } else {
-      merged.set(key, {
-        zip: row.zip,
-        providerName: row.provider_name,
-        technologies: [row.technology as Technology],
-        maxDownMbps: row.max_down_mbps ?? 0,
-        maxUpMbps: row.max_up_mbps ?? 0,
-        locationsServed: row.locations ?? 0
-      });
+      return { rows: Array.from(merged.values()), source: 'supabase' };
     }
   }
-  return Array.from(merged.values());
+
+  return { rows: zips.flatMap(stubProvidersForZip), source: 'stub' };
+}
+
+export async function providersForZips(zips: string[]): Promise<ProviderInZip[]> {
+  const r = await providersForZipsWithSource(zips);
+  return r.rows;
 }
 
 export function summarizeByProvider(rows: ProviderInZip[]) {
