@@ -246,7 +246,18 @@ export async function hotrodProvidersForZips(
     };
   });
 
-  await mapPool(tasks, 150, async (t) => {
+  // Hard time budget — well under the Vercel function timeout so the rest
+  // of buildReport (reviews, news, census, opportunities, RSC serialization)
+  // has comfortable margin. Partial results beat a connection-closed crash.
+  const DEADLINE_MS = 25_000;
+  const deadline = t0 + DEADLINE_MS;
+  let timedOut = false;
+
+  await mapPool(tasks, 200, async (t) => {
+    if (Date.now() > deadline) {
+      timedOut = true;
+      return;
+    }
     const hexes = await loadProviderHexes(t.providerId, t.tech);
     if (hexes.size === 0) return;
     let matched: Set<string> | null = null;
@@ -286,7 +297,10 @@ export async function hotrodProvidersForZips(
       candidatesFromIndex: candidateEntries.size,
       providersScanned: tasks.length,
       matchesFound: hits.length,
-      totalMillis: Date.now() - t0
+      totalMillis: Date.now() - t0,
+      error: timedOut
+        ? `Hotrod scan stopped at ${DEADLINE_MS}ms budget — returning partial results`
+        : undefined
     }
   };
 }

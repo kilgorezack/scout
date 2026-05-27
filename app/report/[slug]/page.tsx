@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowUpRight, Plus } from 'lucide-react';
-import { buildReport, loadReportInput } from '@/lib/report';
+import { buildReport, loadReportInput, type ReportPayload } from '@/lib/report';
 import ReportTabs from './ReportTabs';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 
@@ -14,7 +14,42 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const input = await loadReportInput(slug);
   if (!input) notFound();
-  const report = await buildReport(input);
+
+  // Belt-and-suspenders: if anything still slips past buildReport's internal
+  // defenses (timeouts, upstream connection closed, etc.) we want a
+  // partially-rendered briefing rather than the error screen.
+  let report: ReportPayload;
+  try {
+    report = await buildReport(input);
+  } catch (e) {
+    report = {
+      ...input,
+      providersByZip: [],
+      competitors: [],
+      reviews: {},
+      news: [],
+      demographics: input.zips.map((z) => ({
+        zip: z,
+        population: 0,
+        households: 0,
+        housingUnits: 0,
+        medianHouseholdIncome: 0,
+        ownerOccupiedPct: 0,
+        businessEstablishments: 0
+      })),
+      opportunities: [],
+      dataSource: 'hotrod',
+      hotrodDiagnostics: {
+        bucket: '',
+        zipsResolved: Object.fromEntries(input.zips.map((z) => [z, 0])),
+        candidatesFromIndex: 0,
+        providersScanned: 0,
+        matchesFound: 0,
+        totalMillis: 0,
+        error: e instanceof Error ? e.message : 'Unknown error in buildReport'
+      }
+    };
+  }
 
   const totalHouseholds = report.demographics.reduce((s, d) => s + d.households, 0);
   const incomes = report.demographics.map((d) => d.medianHouseholdIncome).filter(Boolean).sort((a, b) => a - b);
