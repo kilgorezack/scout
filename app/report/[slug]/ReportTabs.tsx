@@ -29,17 +29,12 @@ export default function ReportTabs({ report }: { report: ReportPayload }) {
   return (
     <div className="mt-10">
       <div className="no-scrollbar overflow-x-auto">
-        <div className="inline-flex min-w-max items-center gap-1 rounded-full border border-ink-900/10 bg-paper-50 p-1 shadow-sm">
+        <div className="segmented inline-flex min-w-max">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setActive(t.id)}
-              className={cn(
-                'rounded-full px-4 py-1.5 text-[13px] font-medium transition',
-                active === t.id
-                  ? 'bg-ink-900 text-paper-50 shadow-sm'
-                  : 'text-ink-600 hover:bg-ink-900/[0.05] hover:text-ink-900'
-              )}
+              className={cn('segmented-item', active === t.id && 'segmented-item-active')}
             >
               {t.label}
             </button>

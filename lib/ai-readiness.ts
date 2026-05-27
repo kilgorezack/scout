@@ -39,9 +39,15 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response | nu
   try {
     const res = await fetch(url, {
       ...init,
-      headers: { 'User-Agent': 'ScoutBot/1.0 (+broadband AI readiness check)', ...(init?.headers ?? {}) },
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 ScoutBot/1.0 (+broadband AI readiness check)',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        ...(init?.headers ?? {})
+      },
       redirect: 'follow',
-      signal: AbortSignal.timeout(10_000)
+      signal: AbortSignal.timeout(15_000)
     });
     return res;
   } catch {

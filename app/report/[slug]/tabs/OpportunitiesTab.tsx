@@ -2,8 +2,8 @@ import { Lightbulb, TrendingUp, Shield, Cpu, type LucideIcon } from 'lucide-reac
 import type { ReportPayload } from '@/lib/report';
 
 const PRIORITY_STYLE: Record<string, string> = {
-  high: 'bg-ember-100 text-ember-700 border-ember-200',
-  medium: 'bg-signal-50 text-signal-700 border-signal-200',
+  high: 'bg-gradient-to-r from-pink-500/15 to-orange-400/15 text-fuchsia-700 border-fuchsia-200',
+  medium: 'bg-accent-50 text-accent-700 border-accent-200',
   low: 'bg-ink-100 text-ink-600 border-ink-200'
 };
 
@@ -22,10 +22,10 @@ export default function OpportunitiesTab({ report }: { report: ReportPayload }) 
   }
   return (
     <>
-      <div className="mb-6">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">Opportunities</p>
-        <h2 className="display-headline mt-1 text-3xl text-ink-900">
-          <span className="display-italic">{report.opportunities.length}</span> ranked moves for your next launch
+      <div className="mb-7">
+        <p className="eyebrow">Opportunities</p>
+        <h2 className="display mt-2 text-4xl text-ink-900">
+          <span className="gradient-text">{report.opportunities.length}</span> ranked moves for your next launch.
         </h2>
       </div>
 
@@ -33,35 +33,33 @@ export default function OpportunitiesTab({ report }: { report: ReportPayload }) 
         {report.opportunities.map((o, i) => {
           const Icon = SOLUTION_ICON[o.solution.id] ?? Lightbulb;
           return (
-            <div key={o.id} className="scout-card p-6">
+            <div key={o.id} className="panel p-7">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-900 text-paper-50">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent-500 via-fuchsia-500 to-purple-500 text-white shadow-glow">
                     <Icon size={18} />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em]">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
                       <span className="text-ink-500">#{String(i + 1).padStart(2, '0')}</span>
                       <span className="text-ink-300">·</span>
-                      <span className="text-signal-700">Recommend {o.solution.name}</span>
+                      <span className="text-accent-700">Recommend {o.solution.name}</span>
                     </div>
-                    <h3 className="display-headline mt-1.5 text-xl leading-tight text-ink-900">
-                      {o.rationaleHeadline}
-                    </h3>
+                    <h3 className="display mt-2 text-xl leading-tight text-ink-900">{o.rationaleHeadline}</h3>
                   </div>
                 </div>
-                <span className={`scout-pill ${PRIORITY_STYLE[o.priority]}`}>{o.priority}</span>
+                <span className={`pill ${PRIORITY_STYLE[o.priority]}`}>{o.priority}</span>
               </div>
 
-              <p className="mt-4 text-sm leading-relaxed text-ink-700">{o.rationaleDetail}</p>
-              <p className="mt-2 text-xs italic text-ink-500">{o.solution.blurb}</p>
+              <p className="mt-4 text-[15px] leading-relaxed text-ink-700">{o.rationaleDetail}</p>
+              <p className="mt-2 text-xs text-ink-500">{o.solution.blurb}</p>
 
-              <div className="mt-5 border-t border-ink-900/5 pt-4">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-500">Evidence</p>
+              <div className="mt-5 border-t border-ink-100 pt-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">Evidence</p>
                 <ul className="mt-2 space-y-1.5 text-sm text-ink-700">
-                  {o.evidence.map((e, i) => (
-                    <li key={i} className="flex gap-2">
-                      <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-signal-500" />
+                  {o.evidence.map((e, j) => (
+                    <li key={j} className="flex gap-2">
+                      <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gradient-to-br from-accent-500 to-fuchsia-500" />
                       <span>{e}</span>
                     </li>
                   ))}
@@ -69,7 +67,7 @@ export default function OpportunitiesTab({ report }: { report: ReportPayload }) 
               </div>
 
               <div className="mt-4">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-500">Target ZIPs</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">Target ZIPs</p>
                 <p className="mt-1 font-mono text-xs text-ink-700">
                   {o.targetZips.slice(0, 12).join(' · ')}
                   {o.targetZips.length > 12 ? ` … +${o.targetZips.length - 12} more` : ''}

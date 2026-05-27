@@ -18,30 +18,37 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
   const medianIncome = incomes.length ? incomes[Math.floor(incomes.length / 2)] : 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-5 pb-16 pt-10 sm:px-8">
+    <div className="mx-auto max-w-7xl px-6 pb-20 pt-8">
       {/* HERO HEADER */}
-      <section className="relative overflow-hidden rounded-3xl border border-ink-900/10 bg-ink-900 px-8 py-12 text-paper-50 sm:px-12 sm:py-14">
-        <div className="absolute -right-32 -top-24 h-80 w-80 rounded-full bg-signal-500/25 blur-3xl" />
-        <div className="absolute -bottom-40 -left-32 h-80 w-80 rounded-full bg-ember-500/15 blur-3xl" />
+      <section className="panel-dark relative overflow-hidden px-8 py-14 sm:px-14 sm:py-16">
+        <div className="absolute inset-0 -z-0 aurora-dark opacity-80" />
+        <div className="absolute inset-0 -z-0 bg-gradient-to-b from-transparent via-ink-900/20 to-ink-900/70" />
 
-        <div className="relative flex flex-col gap-6">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-paper-200/70">
-            <span className="grid h-1.5 w-1.5 rounded-full bg-signal-400 animate-pulse-dot" />
+        <div className="relative flex flex-col gap-7">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
             <span>Market briefing</span>
-            <span className="text-paper-200/30">·</span>
-            <span className="font-mono normal-case tracking-normal text-paper-200/60">
-              {report.zips.map((z) => z).join(' · ')}
+            <span className="text-white/30">·</span>
+            <span className="font-mono normal-case tracking-normal text-white/50">
+              {report.zips.join(' · ')}
             </span>
           </div>
 
-          <h1 className="display-headline text-5xl text-paper-50 sm:text-7xl">
+          <h1 className="display text-5xl text-white sm:text-7xl">
             {report.companyName ? (
               <>
-                {report.companyName} <span className="display-italic text-signal-300">vs.</span> the market
+                {report.companyName} vs.{' '}
+                <span className="bg-gradient-to-r from-pink-300 via-fuchsia-300 to-blue-300 bg-clip-text text-transparent">
+                  {report.competitors.length} competitors
+                </span>
               </>
             ) : (
               <>
-                The <span className="display-italic text-signal-300">competitive</span> picture
+                The{' '}
+                <span className="bg-gradient-to-r from-pink-300 via-fuchsia-300 to-blue-300 bg-clip-text text-transparent">
+                  competitive
+                </span>{' '}
+                picture
               </>
             )}
           </h1>
@@ -53,14 +60,11 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
             <HeroStat label="Median income" value={formatCurrency(medianIncome)} />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Link href="/analyze" className="scout-btn-signal">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Link href="/analyze" className="btn-accent !text-[14px]">
               <Plus size={14} /> New analysis
             </Link>
-            <Link
-              href="/ai-readiness"
-              className="inline-flex items-center gap-1.5 rounded-full border border-paper-50/15 bg-paper-50/5 px-5 py-2.5 text-sm font-medium text-paper-50 backdrop-blur transition hover:bg-paper-50/10"
-            >
+            <Link href="/ai-readiness" className="btn-glass !text-[14px]">
               Score my website <ArrowUpRight size={14} />
             </Link>
           </div>
@@ -78,9 +82,9 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
-      <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-paper-200/60">{label}</div>
-      <div className="mt-1 font-display text-3xl leading-none tracking-tightest text-paper-50">{value}</div>
+    <div className="rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3 backdrop-blur-xl">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">{label}</div>
+      <div className="display mt-1 text-3xl text-white">{value}</div>
     </div>
   );
 }

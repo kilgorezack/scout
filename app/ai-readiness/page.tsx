@@ -4,17 +4,24 @@ export const metadata = { title: 'AI Readiness — Scout' };
 
 export default function AIReadinessPage() {
   return (
-    <div className="mx-auto max-w-4xl px-5 py-14 sm:px-8 sm:py-20">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">AI readiness</p>
-      <h1 className="display-headline mt-2 text-5xl text-ink-900 sm:text-6xl">
-        Can AI assistants <span className="display-italic">find</span> you?
-      </h1>
-      <p className="mt-4 max-w-2xl text-ink-700">
-        Drop in your marketing site URL. Scout checks crawler policy, structured data, metadata,
-        content depth, NAP, and SEO basics — and grades it A through F.
-      </p>
-      <div className="mt-10">
-        <AIReadinessForm />
+    <div className="relative">
+      <div className="absolute inset-x-0 top-0 -z-10 h-[60vh] aurora opacity-70" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-[60vh] bg-gradient-to-b from-white/0 via-white/40 to-white" />
+
+      <div className="mx-auto max-w-4xl px-6 py-20 sm:py-28">
+        <div className="text-center">
+          <p className="eyebrow">AI readiness</p>
+          <h1 className="display mt-3 text-5xl text-ink-900 sm:text-7xl">
+            Can AI assistants <span className="gradient-text">find you?</span>
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-ink-600">
+            Drop in your marketing site URL. Scout checks crawler policy, structured data, metadata, content depth,
+            NAP, and SEO basics — and grades it A through F.
+          </p>
+        </div>
+        <div className="mt-12">
+          <AIReadinessForm />
+        </div>
       </div>
     </div>
   );

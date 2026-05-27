@@ -11,39 +11,36 @@ export default function OverviewTab({ report }: { report: ReportPayload }) {
   const top = report.opportunities[0];
 
   const techCounts = new Map<string, number>();
-  for (const c of report.competitors) {
-    for (const t of c.technologies) techCounts.set(t, (techCounts.get(t) ?? 0) + 1);
-  }
+  for (const c of report.competitors) for (const t of c.technologies) techCounts.set(t, (techCounts.get(t) ?? 0) + 1);
   const techMix = Array.from(techCounts.entries()).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-      <div className="lg:col-span-2 scout-card p-7">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">Executive summary</p>
-        <p className="mt-4 text-[15px] leading-[1.7] text-ink-800">
+      <div className="panel lg:col-span-2 p-8">
+        <p className="eyebrow">Executive summary</p>
+        <p className="mt-4 text-[17px] leading-[1.65] text-ink-700">
           {summarize(report, { totalLocations, totalHouseholds, totalBusinesses, medianIncome })}
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {techMix.map(([tech, count]) => (
-            <div key={tech} className="rounded-lg border border-ink-900/10 bg-paper px-3 py-2">
-              <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-500">{tech}</div>
-              <div className="font-display text-2xl leading-none text-ink-900">{count}</div>
+            <div key={tech} className="rounded-2xl border border-ink-100 bg-bg-subtle px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">{tech}</div>
+              <div className="display mt-1 text-2xl leading-none text-ink-900">{count}</div>
             </div>
           ))}
         </div>
 
         {top && (
-          <div className="mt-7 rounded-2xl border border-ember-200/60 bg-ember-50 p-5">
-            <div className="flex items-center gap-2 text-ember-700">
+          <div className="mt-7 overflow-hidden rounded-2xl border border-ink-100 bg-gradient-to-br from-pink-50 via-fuchsia-50 to-blue-50 p-6">
+            <div className="flex items-center gap-2 text-fuchsia-700">
               <Lightbulb size={14} />
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em]">Top opportunity</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">Top opportunity</span>
             </div>
-            <p className="display-headline mt-2 text-2xl text-ink-900">
-              {top.solution.name} <span className="display-italic text-ember-700">— </span>
-              {top.rationaleHeadline}
+            <p className="display mt-2 text-2xl text-ink-900">
+              {top.solution.name} — {top.rationaleHeadline}
             </p>
-            <p className="mt-2 text-sm text-ink-700">{top.rationaleDetail}</p>
+            <p className="mt-2 text-[15px] leading-relaxed text-ink-700">{top.rationaleDetail}</p>
           </div>
         )}
       </div>
@@ -60,12 +57,12 @@ export default function OverviewTab({ report }: { report: ReportPayload }) {
 
 function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="scout-card p-5">
+    <div className="panel p-5">
       <div className="flex items-center gap-2 text-ink-500">
         <Icon size={13} />
-        <span className="text-[10px] font-medium uppercase tracking-[0.16em]">{label}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
       </div>
-      <div className="mt-1.5 font-display text-3xl leading-none tracking-tightest text-ink-900">{value}</div>
+      <div className="display mt-2 text-3xl leading-none text-ink-900">{value}</div>
     </div>
   );
 }

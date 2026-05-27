@@ -16,34 +16,32 @@ export default function CoverageTab({ report }: { report: ReportPayload }) {
 
   return (
     <>
-      <div className="mb-6">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">Coverage</p>
-        <h2 className="display-headline mt-1 text-3xl text-ink-900">
-          Where each provider <span className="display-italic">overlaps</span> with your footprint
+      <div className="mb-7">
+        <p className="eyebrow">Coverage</p>
+        <h2 className="display mt-2 text-4xl text-ink-900">
+          Where each provider <span className="gradient-text">overlaps.</span>
         </h2>
       </div>
 
-      <div className="scout-card overflow-auto">
+      <div className="panel overflow-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-paper text-left text-[10px] uppercase tracking-[0.16em] text-ink-500">
+          <thead className="bg-bg-subtle text-left text-[10px] uppercase tracking-[0.16em] text-ink-500">
             <tr>
-              <th className="sticky left-0 z-10 bg-paper px-4 py-3 font-medium">ZIP</th>
-              <th className="px-3 py-3 font-medium">Comps</th>
+              <th className="sticky left-0 z-10 bg-bg-subtle px-4 py-3 font-semibold">ZIP</th>
+              <th className="px-3 py-3 font-semibold">Comps</th>
               {competitors.map((c) => (
-                <th key={c.providerName} className="whitespace-nowrap px-3 py-3 font-medium">
-                  {c.providerName}
-                </th>
+                <th key={c.providerName} className="whitespace-nowrap px-3 py-3 font-semibold">{c.providerName}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-ink-900/5">
+          <tbody className="divide-y divide-ink-100">
             {zipRows.map((row) => (
               <tr key={row.zip}>
-                <td className="sticky left-0 bg-paper-50 px-4 py-2.5 font-mono text-xs font-medium text-ink-800">{row.zip}</td>
+                <td className="sticky left-0 bg-white px-4 py-2.5 font-mono text-xs font-medium text-ink-800">{row.zip}</td>
                 <td className="px-3 py-2.5 font-mono text-xs text-ink-700">{row.present}</td>
                 {row.cells.map((cell) => {
                   const intensity = cell.locations / maxLocations;
-                  const bg = cell.locations ? `rgba(79, 70, 229, ${0.05 + intensity * 0.45})` : 'transparent';
+                  const bg = cell.locations ? `rgba(0, 113, 227, ${0.05 + intensity * 0.55})` : 'transparent';
                   return (
                     <td
                       key={cell.providerName}

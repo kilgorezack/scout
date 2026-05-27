@@ -5,12 +5,12 @@ import AIReadinessForm from '@/components/AIReadinessForm';
 export default function AIReadinessTab() {
   return (
     <>
-      <div className="mb-6">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-500">AI readiness</p>
-        <h2 className="display-headline mt-1 text-3xl text-ink-900">
-          Can AI assistants <span className="display-italic">find</span> and recommend you?
+      <div className="mb-7">
+        <p className="eyebrow">AI readiness</p>
+        <h2 className="display mt-2 text-4xl text-ink-900">
+          Can AI assistants <span className="gradient-text">find and recommend</span> you?
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-ink-600">
+        <p className="mt-3 max-w-2xl text-[15px] text-ink-600">
           Drop in your marketing site URL. Scout checks crawler policy, structured data, metadata,
           content depth, NAP, and SEO basics — and grades it A through F.
         </p>

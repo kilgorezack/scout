@@ -5,76 +5,79 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Cream paper background
-        paper: {
-          DEFAULT: '#f7f4ec',
-          50: '#fdfcf8',
-          100: '#f7f4ec',
-          200: '#ece6d4',
-          300: '#ddd2b3'
+        bg: {
+          DEFAULT: '#ffffff',
+          subtle: '#fbfbfd',
+          muted: '#f5f5f7'
         },
-        // Near-black "ink" with a cool undertone
         ink: {
-          DEFAULT: '#0b0f1a',
-          50: '#f5f6f9',
-          100: '#e7e9ef',
-          200: '#cdd2dd',
-          300: '#a4adc1',
-          400: '#6f7a96',
-          500: '#4a5572',
-          600: '#2f3852',
-          700: '#1c2238',
-          800: '#121828',
-          900: '#0b0f1a',
-          950: '#05080f'
+          DEFAULT: '#1d1d1f',
+          50: '#f5f5f7',
+          100: '#e8e8ed',
+          200: '#d2d2d7',
+          300: '#a1a1a6',
+          400: '#86868b',
+          500: '#6e6e73',
+          600: '#515154',
+          700: '#3a3a3c',
+          800: '#262628',
+          900: '#1d1d1f',
+          950: '#0a0a0a'
         },
-        // Electric "signal" accent
-        signal: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81'
-        },
-        // Warm accent for highlights / hot opportunities
-        ember: {
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316',
-          600: '#ea580c',
-          700: '#c2410c'
+        accent: {
+          DEFAULT: '#0071e3',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#0071e3',
+          600: '#0060c7',
+          700: '#0050a8',
+          800: '#003e84',
+          900: '#002b5c'
         }
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'ui-serif', 'Georgia', 'serif'],
+        sans: ['var(--font-sans)', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', 'system-ui', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
       },
       letterSpacing: {
-        tightest: '-0.04em'
+        tightest: '-0.045em',
+        tighter2: '-0.03em'
+      },
+      boxShadow: {
+        soft: '0 1px 2px rgba(0,0,0,0.04), 0 8px 24px -12px rgba(0,0,0,0.08)',
+        lift: '0 4px 6px -2px rgba(0,0,0,0.04), 0 20px 50px -20px rgba(0,0,0,0.15)',
+        glow: '0 10px 40px -10px rgba(0,113,227,0.45)',
+        glass: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.04), 0 12px 36px -12px rgba(0,0,0,0.12)'
+      },
+      backdropBlur: {
+        xs: '2px'
       },
       keyframes: {
-        sweep: {
-          '0%': { transform: 'rotate(0deg)', opacity: '0.0' },
-          '20%': { opacity: '0.45' },
-          '100%': { transform: 'rotate(360deg)', opacity: '0.0' }
+        aurora: {
+          '0%,100%': { transform: 'translate3d(0,0,0) rotate(0deg)' },
+          '50%': { transform: 'translate3d(2%,1%,0) rotate(8deg)' }
         },
-        pulse_dot: {
-          '0%,100%': { opacity: '0.4', transform: 'scale(0.95)' },
-          '50%': { opacity: '1', transform: 'scale(1.05)' }
+        floaty: {
+          '0%,100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-6px)' }
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' }
+        },
+        pulseDot: {
+          '0%,100%': { opacity: '0.5', transform: 'scale(0.85)' },
+          '50%': { opacity: '1', transform: 'scale(1.1)' }
         }
       },
       animation: {
-        sweep: 'sweep 8s linear infinite',
-        'pulse-dot': 'pulse_dot 2.4s ease-in-out infinite'
+        aurora: 'aurora 28s ease-in-out infinite',
+        floaty: 'floaty 6s ease-in-out infinite',
+        shimmer: 'shimmer 3s linear infinite',
+        'pulse-dot': 'pulseDot 2.4s ease-in-out infinite'
       }
     }
   },
