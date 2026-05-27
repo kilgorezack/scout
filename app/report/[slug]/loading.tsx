@@ -72,20 +72,22 @@ export default function ReportLoading() {
     };
   }, []);
 
-  // Cycle funny messages every ~2.2s with a brief fade.
+  // Cycle funny messages every ~1.1s with a brief fade — fast enough that
+  // even sub-second loads usually show at least one cycle.
   useEffect(() => {
     const id = setInterval(() => {
       setFade(false);
       setTimeout(() => {
         setMsgIdx((i) => (i + 1) % messages.length);
         setFade(true);
-      }, 220);
-    }, 2200);
+      }, 180);
+    }, 1100);
     return () => clearInterval(id);
   }, [messages.length]);
 
-  // 45s is the Hotrod deadline; ramp the bar to ~95% over that interval.
-  const pct = Math.min(95, (elapsed / 45_000) * 100);
+  // Start at 8% so the bar is visible on first paint; ramp toward ~95%
+  // over the 45s Hotrod deadline.
+  const pct = Math.min(95, 8 + (elapsed / 45_000) * 87);
   const seconds = (elapsed / 1000).toFixed(1);
 
   return (
@@ -100,49 +102,47 @@ export default function ReportLoading() {
             <span>Building briefing</span>
             <span className="text-white/30">·</span>
             <span className="font-mono normal-case text-white/50">{seconds}s elapsed</span>
+            <span className="text-white/30">·</span>
+            <span className="font-mono normal-case text-white/80">{Math.round(pct)}%</span>
           </div>
 
-          <h1 className="display text-5xl text-white sm:text-7xl">
-            <span className="bg-gradient-to-r from-pink-300 via-fuchsia-300 to-blue-300 bg-clip-text text-transparent">
-              Scanning
-            </span>{' '}
-            your market…
-          </h1>
+          {/* Headline: cycling silly message is the hero */}
+          <div className="min-h-[120px] sm:min-h-[160px]">
+            <p
+              className={`display text-4xl leading-tight text-white sm:text-6xl transition-opacity duration-200 ${
+                fade ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <span className="bg-gradient-to-r from-pink-300 via-fuchsia-300 to-blue-300 bg-clip-text text-transparent">
+                {messages[msgIdx]}
+              </span>
+            </p>
+          </div>
 
-          {/* Cycling silly message */}
-          <p
-            className={`min-h-[1.5rem] text-base text-white/80 transition-opacity duration-200 ${
-              fade ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {messages[msgIdx]}
-          </p>
-
-          {/* Progress bar with explicit percentage */}
-          <div className="space-y-2">
-            <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/10">
+          {/* Big chromatic progress bar */}
+          <div className="space-y-3">
+            <div className="relative h-4 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-accent-500 via-fuchsia-500 to-pink-500 shadow-[0_0_24px_-2px_rgba(236,72,153,0.6)] transition-all duration-200"
+                className="h-full rounded-full bg-gradient-to-r from-accent-500 via-fuchsia-500 to-pink-500 shadow-[0_0_32px_-2px_rgba(236,72,153,0.7)] transition-all duration-200"
                 style={{ width: `${pct}%` }}
               />
-              {/* Animated shimmer over the filled section */}
               <div
-                className="absolute inset-y-0 left-0 rounded-full opacity-40 mix-blend-overlay"
+                className="absolute inset-y-0 left-0 rounded-full opacity-60 mix-blend-overlay"
                 style={{
                   width: `${pct}%`,
                   backgroundImage:
-                    'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
+                    'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%)',
                   backgroundSize: '200% 100%',
-                  animation: 'shimmer 1.6s linear infinite'
+                  animation: 'shimmer 1.2s linear infinite'
                 }}
               />
             </div>
-            <div className="flex items-center justify-between text-xs text-white/60">
-              <span>
-                <span className="font-medium text-white">{STAGES[step].label}</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/80">
+                <Spinner />
+                <span className="ml-2 font-medium text-white">{STAGES[step].label}</span>
                 <span className="ml-2 text-white/50">— {STAGES[step].detail}</span>
               </span>
-              <span className="font-mono text-white/80">{Math.round(pct)}%</span>
             </div>
           </div>
 
