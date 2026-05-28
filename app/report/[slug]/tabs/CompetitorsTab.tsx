@@ -1,6 +1,10 @@
-import { Star } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { Sparkles, Star } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 import type { ReportPayload } from '@/lib/report';
+import DeepResearchDrawer from '@/components/DeepResearchDrawer';
 
 const TECH_COLOR: Record<string, string> = {
   Fiber: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -54,6 +58,21 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
       </div>
     );
   }
+  return <CompetitorsList report={report} />;
+}
+
+function CompetitorsList({ report }: { report: ReportPayload }) {
+  const [openName, setOpenName] = useState<string | null>(null);
+  const opened = report.competitors.find((c) => c.providerName === openName);
+
+  // Pull news headlines for the opened competitor to feed to Gemini as context.
+  const openedHeadlines = opened
+    ? report.news
+        .filter((n) => n.providerName === opened.providerName)
+        .slice(0, 8)
+        .map((n) => `${n.title} (${n.publishedAt})`)
+    : [];
+
   return (
     <>
       <div className="mb-7">
@@ -61,6 +80,9 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
         <h2 className="display mt-2 text-4xl text-ink-900">
           <span className="gradient-text">{report.competitors.length}</span> providers in your footprint
         </h2>
+        <p className="mt-2 text-sm text-ink-500">
+          Tap <span className="font-medium text-ink-700">Deep dive</span> on any card to generate a live Gemini-powered competitive briefing.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -106,10 +128,29 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
                   <dd className="text-[10px] text-ink-500">served</dd>
                 </div>
               </dl>
+
+              <button
+                type="button"
+                onClick={() => setOpenName(c.providerName)}
+                className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-fuchsia-200 bg-gradient-to-r from-pink-50 via-fuchsia-50 to-blue-50 px-3 py-1.5 text-[13px] font-medium text-fuchsia-700 transition hover:from-pink-100 hover:via-fuchsia-100 hover:to-blue-100"
+              >
+                <Sparkles size={13} />
+                Deep dive
+              </button>
             </div>
           );
         })}
       </div>
+
+      <DeepResearchDrawer
+        open={Boolean(opened)}
+        onClose={() => setOpenName(null)}
+        competitorName={opened?.providerName ?? ''}
+        ownCompany={report.companyName}
+        zips={report.zips}
+        technologies={opened?.technologies}
+        recentHeadlines={openedHeadlines}
+      />
     </>
   );
 }
