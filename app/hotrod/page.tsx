@@ -102,19 +102,127 @@ export default function HotrodPage() {
               isolation: isolate !important;
             }
 
-            /* Push every floating UI element below the nav (64px nav height
-               + 16px breathing room). The map itself stays full-viewport so
-               it shows blurred through the glass. */
+            /* ───────────────────────────────────────────────────────────
+               Floating glass sidebar (Scout-style)
+               ─────────────────────────────────────────────────────────── */
             .hotrod-shell .sidebar {
-              top: 64px !important;
-              height: calc(100vh - 64px) !important;
+              top: 80px !important;
+              left: 16px !important;
+              height: calc(100vh - 96px) !important;
+              width: 340px !important;
+              border-radius: 22px !important;
+              border: 1px solid rgba(255, 255, 255, 0.55) !important;
+              background: rgba(255, 255, 255, 0.72) !important;
+              backdrop-filter: blur(24px) saturate(160%) !important;
+              -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                0 1px 2px rgba(11, 15, 26, 0.04),
+                0 20px 48px -16px rgba(11, 15, 26, 0.22) !important;
+              overflow: hidden !important;
             }
-            .hotrod-shell .map-toolbar,
+
+            /* Tabs at the top of the sidebar — switch from underline pattern
+               to Scout's segmented-pill look. */
+            .hotrod-shell .sidebar-tabs {
+              padding: 10px 12px 8px !important;
+              border-bottom: none !important;
+              gap: 4px !important;
+              background: transparent !important;
+            }
+            .hotrod-shell .sidebar-tab {
+              padding: 7px 0 !important;
+              border-bottom: none !important;
+              border-radius: 999px !important;
+              font-weight: 500 !important;
+              color: #515154 !important;
+              transition: background 180ms ease, color 180ms ease !important;
+            }
+            .hotrod-shell .sidebar-tab:hover {
+              background: rgba(11, 15, 26, 0.04) !important;
+              color: #1d1d1f !important;
+            }
+            .hotrod-shell .sidebar-tab.active {
+              background: #1d1d1f !important;
+              color: #ffffff !important;
+              border-bottom: none !important;
+              font-weight: 600 !important;
+            }
+
+            /* The Add Provider CTA: use Scout's chromatic gradient. */
+            .hotrod-shell .btn-add-provider {
+              background: linear-gradient(135deg, #0071e3 0%, #8b5cf6 50%, #ec4899 100%) !important;
+              border-radius: 14px !important;
+              padding: 11px 16px !important;
+              font-weight: 600 !important;
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                0 8px 24px -10px rgba(139, 92, 246, 0.55) !important;
+              border: none !important;
+              transition: transform 160ms ease, box-shadow 160ms ease !important;
+            }
+            .hotrod-shell .btn-add-provider:hover {
+              transform: translateY(-1px) !important;
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                0 12px 32px -10px rgba(139, 92, 246, 0.7) !important;
+            }
+
+            /* Sidebar inner padding around the Add Provider button. */
+            .hotrod-shell .sidebar-actions {
+              padding: 8px 14px 14px !important;
+            }
+
+            /* Footer inside sidebar — keep it visually quieter against glass. */
+            .hotrod-shell .sidebar-footer {
+              background: transparent !important;
+              border-top: 1px solid rgba(11, 15, 26, 0.07) !important;
+              padding: 12px 16px !important;
+            }
+
+            /* Provider list area scroll polish (transparent track on glass) */
+            .hotrod-shell .provider-list::-webkit-scrollbar-track {
+              background: transparent !important;
+            }
+
+            /* ───────────────────────────────────────────────────────────
+               Floating controls (right side)
+               ─────────────────────────────────────────────────────────── */
+            .hotrod-shell .map-toolbar {
+              top: 80px !important;
+              right: 16px !important;
+            }
+            .hotrod-shell .map-toolbar-btn {
+              background: rgba(255, 255, 255, 0.72) !important;
+              backdrop-filter: blur(24px) saturate(160%) !important;
+              -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+              border: 1px solid rgba(255, 255, 255, 0.55) !important;
+              color: #1d1d1f !important;
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                0 8px 20px -8px rgba(11, 15, 26, 0.18) !important;
+            }
+            .hotrod-shell .map-toolbar-btn:hover {
+              background: rgba(255, 255, 255, 0.9) !important;
+            }
+            .hotrod-shell .map-toolbar-btn.active {
+              background: #1d1d1f !important;
+              color: #ffffff !important;
+            }
+
+            /* Draw hint and other floaters: same offset rule. */
             .hotrod-shell .draw-hint,
             .hotrod-shell #overbuild-legend,
             .hotrod-shell .area-search-results,
             .hotrod-shell .toast-host {
               top: 80px !important;
+            }
+
+            /* MapKit's built-in zoom controls (bottom-right) — let them
+               adopt a glassy look too. */
+            .hotrod-shell .mk-zoom-control {
+              backdrop-filter: blur(20px) !important;
+              -webkit-backdrop-filter: blur(20px) !important;
             }
 
             /* Hide Scout's footer on this page — the dashboard fills the
