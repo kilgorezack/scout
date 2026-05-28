@@ -4,17 +4,19 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
+  // When SCOUT_BUILD=1, build for hosting at /hotrod/ inside the Scout
+  // Next.js app — drop the Cloudflare worker bundle and prefix assets with /hotrod/.
+  const scoutBuild = env.SCOUT_BUILD === '1';
+
   return {
-    plugins: [cloudflare()],
+    plugins: scoutBuild ? [] : [cloudflare()],
+    base: scoutBuild ? '/hotrod/' : '/',
     define: {
       __MAPKIT_TOKEN__: JSON.stringify(env.MAPKIT_TOKEN || ''),
-      // h3-js bundles Emscripten/WASM glue that references __dirname as a CJS
-      // global. Cloudflare Workers (ES module runtime) doesn't provide it, so
-      // define a safe fallback so the WASM can still load via the inlined bundle.
       __dirname: JSON.stringify('/'),
     },
     build: {
-      outDir: 'dist',
+      outDir: scoutBuild ? 'dist-scout' : 'dist',
     },
   };
 });

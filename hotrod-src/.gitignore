@@ -3,3 +3,8 @@ dist/
 .env
 *.local
 .DS_Store
+
+# Build artifacts (committed manually into ../public/hotrod/)
+dist/
+dist-scout/
+node_modules/

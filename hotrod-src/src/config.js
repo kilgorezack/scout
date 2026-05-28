@@ -2,8 +2,11 @@
 // HOTROD — App Configuration & Constants
 // =========================================================
 
-/** MapKit JS token injected by Vite at build time */
-export const MAPKIT_TOKEN = typeof __MAPKIT_TOKEN__ !== 'undefined' ? __MAPKIT_TOKEN__ : '';
+/** MapKit JS token — Vite-baked at build time, or injected at runtime by
+ *  Scout via <script>window.SCOUT_CONFIG = { mapkitToken: '...' }</script>. */
+export const MAPKIT_TOKEN =
+  (typeof window !== 'undefined' && window.SCOUT_CONFIG?.mapkitToken) ||
+  (typeof __MAPKIT_TOKEN__ !== 'undefined' ? __MAPKIT_TOKEN__ : '');
 
 /** Initial map region — centered on continental US */
 export const INITIAL_REGION = {
@@ -53,5 +56,7 @@ export const PROVIDER_COLORS = [
   { hex: '#F778BA', rgba: (a) => `rgba(247,120,186,${a})` },  // Pink
 ];
 
-/** API base path — proxied to Express backend */
-export const API_BASE = '/api';
+/** API base path — '/api' for standalone Hotrod; Scout overrides to
+ *  '/hotrod-api' via window.SCOUT_CONFIG. */
+export const API_BASE =
+  (typeof window !== 'undefined' && window.SCOUT_CONFIG?.apiBase) || '/api';
