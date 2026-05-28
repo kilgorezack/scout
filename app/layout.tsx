@@ -1,7 +1,10 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Script from 'next/script';
 import { Inter } from 'next/font/google';
+
+const CLARITY_PROJECT_ID = 'wxz5ocmlrb';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,6 +26,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <Script id="ms-clarity" strategy="afterInteractive">
+          {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");`}
+        </Script>
+      </head>
       <body className="min-h-screen font-sans antialiased">
         <header className="sticky top-0 z-50">
           <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6">
