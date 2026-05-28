@@ -55,17 +55,25 @@
    Reset & Base
    ========================================================= */
 
-*, *::before, *::after {
+/* All resets / element styles scoped to .hotrod-shell so they never leak
+ * into the host page (e.g. Scout's site nav). Hotrod's standalone HTML
+ * wraps its body content in <div class="hotrod-shell"> so this scoping
+ * works in both contexts. */
+
+.hotrod-shell,
+.hotrod-shell *,
+.hotrod-shell *::before,
+.hotrod-shell *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
-  height: 100%;
-}
-
-body {
+.hotrod-shell {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -75,16 +83,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* When embedded in Scout under /hotrod, the Hotrod app lives inside a
- * .hotrod-shell container so it can sit BELOW the Scout site nav.
- * Standalone Hotrod (no .hotrod-shell wrapper) keeps the original
- * fullscreen-fixed layout. */
-.hotrod-shell {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 64px); /* viewport minus Scout's sticky nav */
-  overflow: hidden;
-}
 .hotrod-shell #map,
 .hotrod-shell .sidebar,
 .hotrod-shell .scout-controls,
@@ -104,15 +102,15 @@ body {
   height: 100%;
 }
 
-a {
+.hotrod-shell a {
   color: var(--accent);
   text-decoration: none;
 }
-a:hover {
+.hotrod-shell a:hover {
   text-decoration: underline;
 }
 
-button {
+.hotrod-shell button {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
@@ -121,12 +119,13 @@ button {
   color: inherit;
 }
 
-input, button {
+.hotrod-shell input,
+.hotrod-shell button {
   outline: none;
 }
 
-input:focus-visible,
-button:focus-visible {
+.hotrod-shell input:focus-visible,
+.hotrod-shell button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -135,11 +134,10 @@ button:focus-visible {
    Layout
    ========================================================= */
 
-#map {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
+/* The .hotrod-shell scoped #map rule above handles positioning. This is
+ * just a z-index assertion since the standalone .hotrod-shell takes the
+ * full viewport anyway. */
+.hotrod-shell #map {
   z-index: 0;
 }
 
@@ -153,10 +151,6 @@ button:focus-visible {
    ========================================================= */
 
 .sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
   width: var(--sidebar-width);
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);

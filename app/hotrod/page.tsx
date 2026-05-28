@@ -1,19 +1,20 @@
-// Hosts the vendored Hotrod single-page app inside Scout's layout — Scout's
-// sticky nav stays above, Hotrod renders in a .hotrod-shell container below.
+// Hosts the vendored Hotrod single-page app inside Scout's layout.
 //
-// Hotrod is a vanilla-JS Vite app, so we:
-//   1. Read public/hotrod/index.html at module load
-//   2. Extract its body content + any non-script <link> / <meta> tags
-//   3. Render the body content as raw HTML inside <div className="hotrod-shell">
-//   4. Re-emit Hotrod's CSS / inline scripts / module bundle via Next.js
-//      <Script> tags so they actually execute (dangerouslySetInnerHTML never
-//      runs <script> on its own).
-//   5. Inject window.SCOUT_CONFIG (with the MapKit token + the /hotrod-api
-//      base URL) BEFORE the bundle runs.
+// Strategy: we embed the entire body of Hotrod's built index.html (which
+// already wraps content in <div class="hotrod-shell">) via
+// dangerouslySetInnerHTML. The MapKit CDN <script> tags + the
+// __mapKitReadyPromise inline script are PART of that body HTML and get
+// written into the SSR output verbatim, so the browser executes them in
+// the original order with their original attributes (including the
+// critical data-callback and data-libraries on the MapKit CDN script).
+//
+// We also re-emit head <link rel=stylesheet> and the Hotrod bundle
+// <script type=module> tag because they live in the original <head>
+// (not the body) and Next.js eats child <link>/<script> elements at the
+// root of a page — but dangerouslySetInnerHTML on a <div> preserves them.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import Script from 'next/script';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,69 +24,27 @@ export const metadata = {
   description: 'Compare broadband provider coverage maps side-by-side, powered by Hotrod.'
 };
 
-type ParsedHtml = {
-  bodyHtml: string;
-  cssHrefs: string[];
-  inlineHeadScripts: string[];
-  externalScripts: { src: string; crossOrigin?: string; integrity?: string; isModule: boolean }[];
+type Parsed = {
+  /** Everything in <head> except the title/meta — links and scripts to re-emit. */
+  headInnerHtml: string;
+  /** Everything between <body> and </body> — already includes <div class="hotrod-shell">. */
+  bodyInnerHtml: string;
 };
 
-function parseHotrodHtml(html: string): ParsedHtml {
-  // Body inner HTML.
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  let bodyHtml = bodyMatch ? bodyMatch[1] : '';
-
-  // Strip all <script> tags from the body — we re-emit them via <Script>.
-  const bodyScripts: ParsedHtml['externalScripts'] = [];
-  const bodyInlineScripts: string[] = [];
-  bodyHtml = bodyHtml.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (_full, attrs, inner) => {
-    const srcMatch = (attrs as string).match(/\bsrc=["']([^"']+)["']/i);
-    const isModule = /type=["']module["']/i.test(attrs);
-    if (srcMatch) {
-      bodyScripts.push({ src: srcMatch[1], isModule });
-    } else if ((inner as string).trim()) {
-      bodyInlineScripts.push(inner as string);
-    }
-    return '';
-  });
-
-  // Head scripts (e.g. MapKit JS CDN + inline mapkit-ready promise).
+function parse(html: string): Parsed {
   const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
-  const headHtml = headMatch ? headMatch[1] : '';
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  let head = headMatch ? headMatch[1] : '';
+  const body = bodyMatch ? bodyMatch[1] : '';
 
-  const headExternal: ParsedHtml['externalScripts'] = [];
-  const headInline: string[] = [];
-  headHtml.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (_full, attrs, inner) => {
-    const srcMatch = (attrs as string).match(/\bsrc=["']([^"']+)["']/i);
-    const coMatch = (attrs as string).match(/\bcrossorigin=["']([^"']+)["']/i);
-    const intMatch = (attrs as string).match(/\bintegrity=["']([^"']+)["']/i);
-    const isModule = /type=["']module["']/i.test(attrs);
-    if (srcMatch) {
-      headExternal.push({
-        src: srcMatch[1],
-        crossOrigin: coMatch?.[1],
-        integrity: intMatch?.[1],
-        isModule
-      });
-    } else if ((inner as string).trim()) {
-      headInline.push(inner as string);
-    }
-    return '';
-  });
+  // Strip <title>, <meta>, <link rel=icon>, and preconnect <link>s — Scout's
+  // root layout already owns those and we don't want duplicates.
+  head = head
+    .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+    .replace(/<meta\b[^>]*>/gi, '')
+    .replace(/<link\b[^>]*rel=["'](?:icon|preconnect)["'][^>]*>/gi, '');
 
-  // CSS hrefs from <link rel="stylesheet" ...>
-  const cssHrefs: string[] = [];
-  for (const match of headHtml.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)) {
-    const href = match[0].match(/\bhref=["']([^"']+)["']/i)?.[1];
-    if (href) cssHrefs.push(href);
-  }
-
-  return {
-    bodyHtml,
-    cssHrefs,
-    inlineHeadScripts: [...headInline, ...bodyInlineScripts],
-    externalScripts: [...headExternal, ...bodyScripts]
-  };
+  return { headInnerHtml: head, bodyInnerHtml: body };
 }
 
 const HOTROD_HTML: string | null = (() => {
@@ -96,7 +55,7 @@ const HOTROD_HTML: string | null = (() => {
   }
 })();
 
-const PARSED: ParsedHtml | null = HOTROD_HTML ? parseHotrodHtml(HOTROD_HTML) : null;
+const PARSED: Parsed | null = HOTROD_HTML ? parse(HOTROD_HTML) : null;
 
 export default function HotrodPage() {
   if (!PARSED) {
@@ -106,8 +65,6 @@ export default function HotrodPage() {
         <h1 className="display mt-3 text-4xl text-ink-900">Build missing.</h1>
         <p className="mt-4 text-ink-600">
           The Hotrod static build (public/hotrod/index.html) wasn&apos;t found in this deploy.
-          Re-run the vendored Vite build with <code>SCOUT_BUILD=1</code> and commit the
-          contents of <code>public/hotrod/</code>.
         </p>
       </div>
     );
@@ -117,45 +74,47 @@ export default function HotrodPage() {
     mapkitToken: process.env.MAPKIT_TOKEN ?? '',
     apiBase: '/hotrod-api'
   };
-  const configJson = JSON.stringify(config);
 
   return (
     <>
-      {/* Hotrod's stylesheets — load in head so they're applied before the body renders. */}
-      {PARSED.cssHrefs.map((href) => (
-        // eslint-disable-next-line @next/next/no-css-tags
-        <link key={href} rel="stylesheet" href={href} />
-      ))}
+      {/* Override .hotrod-shell height to sit BELOW Scout's nav.
+          The standalone Hotrod default is 100vh; Scout subtracts the nav. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            .hotrod-shell { height: calc(100vh - 64px) !important; }
+            /* Hide Scout's footer on the coverage-map page — the dashboard is
+               meant to fill the viewport below the nav. */
+            body > footer { display: none; }
+          `
+        }}
+      />
 
-      {/* SCOUT_CONFIG must be set before the Hotrod bundle reads MAPKIT_TOKEN / API_BASE. */}
-      <Script id="scout-hotrod-config" strategy="beforeInteractive">
-        {`window.SCOUT_CONFIG = ${configJson};`}
-      </Script>
+      {/* SCOUT_CONFIG must exist before the Hotrod bundle reads it.
+          dangerouslySetInnerHTML on <script> emits an executing script tag
+          in the SSR HTML (React 18+ supports this on the server). */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.SCOUT_CONFIG = ${JSON.stringify(config)};`
+        }}
+      />
 
-      {/* Hotrod's inline head scripts (e.g. the __mapKitReadyPromise setup that
-          needs to run BEFORE the MapKit CDN script fires). */}
-      {PARSED.inlineHeadScripts.map((src, i) => (
-        <Script key={`inline-${i}`} id={`hotrod-inline-${i}`} strategy="beforeInteractive">
-          {src}
-        </Script>
-      ))}
+      {/* Re-emit head scripts + stylesheets verbatim so MapKit and the
+          Hotrod bundle load with all their original attributes intact. */}
+      <div
+        suppressHydrationWarning
+        style={{ display: 'none' }}
+        dangerouslySetInnerHTML={{ __html: PARSED.headInnerHtml }}
+      />
 
-      {/* Hotrod's external scripts (MapKit CDN + its own bundle). */}
-      {PARSED.externalScripts.map((s, i) => (
-        <Script
-          key={`ext-${i}`}
-          id={`hotrod-ext-${i}`}
-          src={s.src}
-          type={s.isModule ? 'module' : undefined}
-          crossOrigin={s.crossOrigin as 'anonymous' | 'use-credentials' | undefined}
-          integrity={s.integrity}
-          strategy="afterInteractive"
-        />
-      ))}
-
-      {/* The Hotrod app DOM, mounted inside a .hotrod-shell container so it
-          sits below Scout's nav and is positioned relative to the container. */}
-      <div className="hotrod-shell" dangerouslySetInnerHTML={{ __html: PARSED.bodyHtml }} />
+      {/* The actual Hotrod app: body content including the
+          .hotrod-shell wrapper, all inline scripts (clarity, mapkit
+          ready-promise setup), and the MapKit CDN script with its
+          data-callback / data-libraries attributes preserved. */}
+      <div
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: PARSED.bodyInnerHtml }}
+      />
     </>
   );
 }

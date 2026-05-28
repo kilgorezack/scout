@@ -40,9 +40,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/research" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Research
                 </Link>
-                <Link href="/hotrod" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                {/* Plain <a> so navigation triggers a full page load — the
+                    Hotrod app injects script tags via dangerouslySetInnerHTML
+                    that only execute on initial HTML parse, not on a
+                    client-side Next.js route change. */}
+                <a href="/hotrod" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Coverage map
-                </Link>
+                </a>
                 <Link href="/ai-readiness" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   AI readiness
                 </Link>
