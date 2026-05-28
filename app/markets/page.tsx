@@ -1,7 +1,7 @@
 // Hosts the vendored Signal React SPA inside Scout's layout — Scout's
 // sticky nav stays above, Signal renders in a .signal-shell container below.
 //
-// Same integration shape as /hotrod: read public/signal/index.html at
+// Same integration shape as /hotrod: read public/markets/index.html at
 // module load, write the body innerHTML via dangerouslySetInnerHTML
 // (so the included <script type=module> tag actually executes on
 // initial parse), re-emit head <link rel=stylesheet> + the MapKit CDN
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const metadata = {
-  title: 'Signal — Scout',
+  title: 'Markets — Scout',
   description: 'Broadband market intelligence for international markets — Australia, UK, Canada, South Africa.'
 };
 
@@ -41,7 +41,7 @@ function parse(html: string): Parsed {
 
 const SIGNAL_HTML: string | null = (() => {
   try {
-    return readFileSync(path.join(process.cwd(), 'public', 'signal', 'index.html'), 'utf-8');
+    return readFileSync(path.join(process.cwd(), 'public', 'markets', 'index.html'), 'utf-8');
   } catch {
     return null;
   }
@@ -56,16 +56,16 @@ export default function SignalPage() {
         <p className="eyebrow">Signal</p>
         <h1 className="display mt-3 text-4xl text-ink-900">Build missing.</h1>
         <p className="mt-4 text-ink-600">
-          The Signal static build (public/signal/index.html) wasn&apos;t found in this deploy.
+          The Signal static build (public/markets/index.html) wasn&apos;t found in this deploy.
         </p>
       </div>
     );
   }
 
-  // Signal reads SCOUT_CONFIG to use /signal-api/, force light theme,
+  // Signal reads SCOUT_CONFIG to use /markets-api/, force light theme,
   // and pick up the MapKit JS token at runtime.
   const config = {
-    apiBase: '/signal-api',
+    apiBase: '/markets-api',
     mapkitToken: process.env.MAPKIT_TOKEN ?? '',
     embedded: true
   };
@@ -75,7 +75,7 @@ export default function SignalPage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            /* Hide the global 'Run analysis' button on /signal — feels
+            /* Hide the global 'Run analysis' button on /markets — feels
                wrong here. */
             body > header a.btn-primary { display: none !important; }
 
@@ -196,7 +196,7 @@ export default function SignalPage() {
               --accent-biz: #8b5cf6 !important;
             }
 
-            /* Hide Scout's global footer on /signal so the dashboard fills
+            /* Hide Scout's global footer on /markets so the dashboard fills
                the viewport. */
             body > footer { display: none; }
           `

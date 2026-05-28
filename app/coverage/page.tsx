@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const metadata = {
-  title: 'Coverage Map — Scout',
+  title: 'Coverage — Scout',
   description: 'Compare broadband provider coverage maps side-by-side, powered by Hotrod.'
 };
 
@@ -49,7 +49,7 @@ function parse(html: string): Parsed {
 
 const HOTROD_HTML: string | null = (() => {
   try {
-    return readFileSync(path.join(process.cwd(), 'public', 'hotrod', 'index.html'), 'utf-8');
+    return readFileSync(path.join(process.cwd(), 'public', 'coverage', 'index.html'), 'utf-8');
   } catch {
     return null;
   }
@@ -64,7 +64,7 @@ export default function HotrodPage() {
         <p className="eyebrow">Coverage map</p>
         <h1 className="display mt-3 text-4xl text-ink-900">Build missing.</h1>
         <p className="mt-4 text-ink-600">
-          The Hotrod static build (public/hotrod/index.html) wasn&apos;t found in this deploy.
+          The Hotrod static build (public/coverage/index.html) wasn&apos;t found in this deploy.
         </p>
       </div>
     );
@@ -72,12 +72,12 @@ export default function HotrodPage() {
 
   const config = {
     mapkitToken: process.env.MAPKIT_TOKEN ?? '',
-    apiBase: '/hotrod-api'
+    apiBase: '/coverage-api'
   };
 
   return (
     <>
-      {/* Page-scoped CSS overrides for the /hotrod route. */}
+      {/* Page-scoped CSS overrides for the /coverage route. */}
       <style
         dangerouslySetInnerHTML={{
           __html: `

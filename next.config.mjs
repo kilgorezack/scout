@@ -22,14 +22,26 @@ const nextConfig = {
   // public/.../index.html files at runtime; force them into the function
   // bundle so they're available on Vercel.
   outputFileTracingIncludes: {
-    '/hotrod': ['./public/hotrod/index.html'],
-    '/signal': ['./public/signal/index.html']
+    '/coverage': ['./public/coverage/index.html'],
+    '/markets': ['./public/markets/index.html']
   },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'ui-avatars.com' },
       { protocol: 'https', hostname: 'logo.clearbit.com' }
     ]
+  },
+  // Preserve old URLs after the /hotrod -> /coverage and /signal -> /markets
+  // rename so existing bookmarks / external links keep working.
+  async redirects() {
+    return [
+      { source: '/hotrod', destination: '/coverage', permanent: true },
+      { source: '/hotrod/:path*', destination: '/coverage/:path*', permanent: true },
+      { source: '/hotrod-api/:path*', destination: '/coverage-api/:path*', permanent: true },
+      { source: '/signal', destination: '/markets', permanent: true },
+      { source: '/signal/:path*', destination: '/markets/:path*', permanent: true },
+      { source: '/signal-api/:path*', destination: '/markets-api/:path*', permanent: true }
+    ];
   }
 };
 

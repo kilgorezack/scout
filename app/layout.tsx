@@ -49,11 +49,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     Hotrod/Signal apps inject script tags via
                     dangerouslySetInnerHTML that only execute on initial HTML
                     parse, not on a client-side Next.js route change. */}
-                <a href="/hotrod" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
-                  Coverage map
+                <a href="/coverage" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                  Coverage
                 </a>
-                <a href="/signal" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
-                  Signal
+                <a href="/markets" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                  Markets
                 </a>
                 <Link href="/ai-readiness" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   AI readiness

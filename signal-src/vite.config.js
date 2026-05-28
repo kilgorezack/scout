@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    base: scoutBuild ? '/signal/' : '/',
+    base: scoutBuild ? '/markets/' : '/',
     build: {
       outDir: scoutBuild ? 'dist-scout' : 'dist',
     },
