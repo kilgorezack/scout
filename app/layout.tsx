@@ -42,9 +42,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span className="text-[15px] font-semibold tracking-tight text-ink-900">Scout</span>
               </Link>
               <nav className="flex items-center gap-1 text-sm">
-                <Link href="/analyze" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
-                  Analyze
-                </Link>
                 <Link href="/research" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Research
                 </Link>
