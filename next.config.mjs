@@ -6,14 +6,24 @@ const nextConfig = {
   // function traces so it doesn't bloat the deploy.
   outputFileTracingExcludes: {
     '*': [
-      './hotrod-src/**/*'
+      './hotrod-src/**/*',
+      // Keep the rest of Signal's source out of the function bundles —
+      // we only need api/insights.js for the route handler. Vendored
+      // public/* + signal-src files (scripts, lockfile, data scripts)
+      // bloat traces without ever running on Vercel.
+      './signal-src/public/**/*',
+      './signal-src/scripts/**/*',
+      './signal-src/src/**/*',
+      './signal-src/package-lock.json',
+      './signal-src/eslint.config.js'
     ]
   },
-  // The /hotrod route handler reads public/hotrod/index.html at runtime to
-  // inject the MapKit token. Force the file into the function's bundle so
-  // it's available on Vercel.
+  // /hotrod and /signal route handlers read their respective
+  // public/.../index.html files at runtime; force them into the function
+  // bundle so they're available on Vercel.
   outputFileTracingIncludes: {
-    '/hotrod': ['./public/hotrod/index.html']
+    '/hotrod': ['./public/hotrod/index.html'],
+    '/signal': ['./public/signal/index.html']
   },
   images: {
     remotePatterns: [

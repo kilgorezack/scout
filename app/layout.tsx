@@ -46,11 +46,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   Research
                 </Link>
                 {/* Plain <a> so navigation triggers a full page load — the
-                    Hotrod app injects script tags via dangerouslySetInnerHTML
-                    that only execute on initial HTML parse, not on a
-                    client-side Next.js route change. */}
+                    Hotrod/Signal apps inject script tags via
+                    dangerouslySetInnerHTML that only execute on initial HTML
+                    parse, not on a client-side Next.js route change. */}
                 <a href="/hotrod" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Coverage map
+                </a>
+                <a href="/signal" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                  Signal
                 </a>
                 <Link href="/ai-readiness" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   AI readiness

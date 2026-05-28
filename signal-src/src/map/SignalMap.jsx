@@ -1,0 +1,223 @@
+import { useEffect, useRef, useState } from 'react';
+import { scoreToHex } from '../utils/scoreColors.js';
+import { MARKETS } from '../config.js';
+
+/**
+ * SignalMap — Apple MapKit JS choropleth for broadband opportunity scores.
+ *
+ * Props:
+ *   geojson        — FeatureCollection (residential or business), null while loading
+ *   selectedId     — currently selected region id (string)
+ *   onRegionSelect — callback(properties) when a region is clicked
+ *   scoreField     — property name to use for choropleth coloring (default: 'opportunity_score')
+ *   market         — 'au' | 'uk' (controls map center + boundary)
+ */
+export default function SignalMap({ geojson, selectedId, onRegionSelect, scoreField = 'opportunity_score', market = 'au', theme = 'dark' }) {
+  const mkt = MARKETS[market] ?? MARKETS.au;
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const overlayMapRef = useRef({}); // id → overlay item
+  const [tooltip, setTooltip] = useState(null); // { x, y, name, score }
+  const [mapReady, setMapReady] = useState(false);
+
+  // ── Initialize MapKit JS ────────────────────────────────────────────────────
+  useEffect(() => {
+    let isMounted = true;
+
+    function initMap() {
+      if (!window.mapkit || mapRef.current) return;
+
+      try {
+        mapkit.init({
+          authorizationCallback: done => {
+            done(import.meta.env.VITE_MAPKIT_TOKEN || '');
+          },
+        });
+
+        const map = new mapkit.Map(containerRef.current, {
+          center: new mapkit.Coordinate(mkt.center.lat, mkt.center.lng),
+          cameraDistance: mkt.cameraDistance,
+          mapType: mapkit.Map.MapTypes.MutedStandard,
+          colorScheme: theme === 'light'
+            ? mapkit.Map.ColorSchemes.Light
+            : mapkit.Map.ColorSchemes.Dark,
+          showsCompass: mapkit.FeatureVisibility.Hidden,
+          showsScale: mapkit.FeatureVisibility.Hidden,
+          showsMapTypeControl: false,
+          showsZoomControl: true,
+          isRotationEnabled: false,
+        });
+
+        map.cameraBoundary = new mapkit.CoordinateRegion(
+          new mapkit.Coordinate(mkt.boundaryCenter.lat, mkt.boundaryCenter.lng),
+          new mapkit.CoordinateSpan(mkt.boundarySpan.latDelta, mkt.boundarySpan.lngDelta)
+        );
+
+        mapRef.current = map;
+        if (isMounted) setMapReady(true);
+      } catch (err) {
+        console.error('MapKit init error:', err);
+      }
+    }
+
+    // MapKit core loads first, then libraries (including 'map') load separately.
+    // Poll until both core and the Map constructor are available.
+    const checkInterval = setInterval(() => {
+      if (window.mapkit && window.mapkit.Map) {
+        clearInterval(checkInterval);
+        initMap();
+      }
+    }, 100);
+    return () => {
+      clearInterval(checkInterval);
+      isMounted = false;
+    };
+  }, []);
+
+  // ── Sync map color scheme when theme changes ────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.colorScheme = theme === 'light'
+      ? mapkit.Map.ColorSchemes.Light
+      : mapkit.Map.ColorSchemes.Dark;
+  }, [theme]);
+
+  // ── Render choropleth overlays when geojson arrives ─────────────────────────
+  useEffect(() => {
+    if (!mapReady || !geojson || !mapRef.current) return;
+
+    const map = mapRef.current;
+
+    // Remove old overlays
+    if (map.overlays?.length) {
+      map.removeOverlays(map.overlays);
+    }
+    overlayMapRef.current = {};
+
+    // Build a first-coordinate → SA4 props lookup so we can stamp every
+    // leaf ring overlay after MapKit expands MultiPolygons into sub-overlays.
+    const coordKey = (lat, lng) => `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const coordToProps = new Map();
+    for (const f of geojson.features) {
+      if (!f.geometry || !f.properties?.id) continue;
+      const props = f.properties;
+      const rings = f.geometry.type === 'Polygon'
+        ? f.geometry.coordinates
+        : f.geometry.coordinates.flat(); // MultiPolygon → array of rings
+      for (const ring of rings) {
+        if (ring[0]) coordToProps.set(coordKey(ring[0][1], ring[0][0]), props);
+      }
+    }
+
+    const delegate2 = {
+      itemForFeature(overlay, feature) {
+        if (!overlay) return null;
+        const props = feature.properties ?? {};
+        const score = props[scoreField];
+        const stroke = theme === 'light' ? '#1e293b' : '#ffffff';
+        overlay.style = new mapkit.Style({
+          fillColor: scoreToHex(score),
+          fillOpacity: 0.72,
+          strokeColor: stroke,
+          strokeOpacity: 0.20,
+          lineWidth: 0.8,
+        });
+        overlay.data = props;
+        overlayMapRef.current[props.id] = overlay;
+        return overlay;
+      },
+
+      geoJSONDidComplete(result) {
+        map.addItems(result.items);
+
+        // MapKit expands MultiPolygonOverlay into individual PolygonOverlay rings in
+        // map.overlays. Stamp each ring with SA4 props using first-coordinate lookup.
+        for (const overlay of map.overlays) {
+          if (overlay.data?.id) continue; // already has our props (Polygon features)
+          const pt = overlay.points?.[0]?.[0]; // points[ring][vertex]
+          if (!pt) continue;
+          const props = coordToProps.get(coordKey(pt.latitude, pt.longitude));
+          if (props) {
+            const stroke = theme === 'light' ? '#1e293b' : '#ffffff';
+            overlay.data = props;
+            overlay.style = new mapkit.Style({
+              fillColor: scoreToHex(props[scoreField]),
+              fillOpacity: 0.72,
+              strokeColor: stroke,
+              strokeOpacity: 0.20,
+              lineWidth: 0.8,
+            });
+          }
+        }
+
+        map.addEventListener('select', (event) => {
+          const props = event.overlay?.data;
+          if (props?.id) onRegionSelect?.(props);
+        });
+      },
+
+      geoJSONDidError(error) {
+        console.error('GeoJSON import error:', error);
+      },
+    };
+
+    mapkit.importGeoJSON(geojson, delegate2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, geojson, scoreField]);
+
+  // ── Update selected region highlight ────────────────────────────────────────
+  useEffect(() => {
+    if (!overlayMapRef.current) return;
+    for (const [id, overlay] of Object.entries(overlayMapRef.current)) {
+      const score = overlay.data?.[scoreField];
+      const isSelected = id === selectedId;
+      const stroke = theme === 'light' ? '#1e293b' : '#ffffff';
+      overlay.style = new mapkit.Style({
+        fillColor: scoreToHex(score),
+        fillOpacity: isSelected ? 0.90 : 0.72,
+        strokeColor: stroke,
+        strokeOpacity: isSelected ? 0.6 : 0.20,
+        lineWidth: isSelected ? 2 : 0.5,
+      });
+    }
+  }, [selectedId, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Mouse move for tooltip ───────────────────────────────────────────────────
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onMouseMove = (e) => {
+      const rect = container.getBoundingClientRect();
+      setTooltip(prev => prev ? { ...prev, x: e.clientX - rect.left, y: e.clientY - rect.top } : null);
+    };
+
+    container.addEventListener('mousemove', onMouseMove);
+    return () => container.removeEventListener('mousemove', onMouseMove);
+  }, []);
+
+  return (
+    <div className="map-wrapper">
+      <div ref={containerRef} className="map-container" />
+
+      {!mapReady && (
+        <div className="map-loading">
+          <span className="loading-spinner" />
+          <span>Loading map…</span>
+        </div>
+      )}
+
+      {tooltip && (
+        <div
+          className="map-tooltip"
+          style={{ left: tooltip.x + 14, top: tooltip.y - 10 }}
+        >
+          <div className="map-tooltip-name">{tooltip.name}</div>
+          <div className="map-tooltip-score" style={{ color: scoreToHex(tooltip.score) }}>
+            Score {tooltip.score ?? '—'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
