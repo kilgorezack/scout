@@ -110,7 +110,7 @@ export default function ResearchForm() {
           <input
             value={competitorName}
             onChange={(e) => setCompetitorName(e.target.value)}
-            placeholder="e.g. Nemont, Charter Spectrum, Ziply Fiber"
+            placeholder="e.g. Acme Broadband"
             className="mt-2 w-full rounded-2xl border border-ink-200 bg-white/60 px-4 py-3 text-[15px] text-ink-900 placeholder:text-ink-400 transition focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent-500/15"
           />
         </label>
@@ -121,7 +121,7 @@ export default function ResearchForm() {
           <input
             value={websiteUrl}
             onChange={(e) => setWebsiteUrl(e.target.value)}
-            placeholder="https://www.nemont.com"
+            placeholder="https://www.example.com"
             className="mt-2 w-full rounded-2xl border border-ink-200 bg-white/60 px-4 py-3 text-[15px] text-ink-900 placeholder:text-ink-400 transition focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent-500/15"
           />
         </label>
@@ -144,7 +144,7 @@ export default function ResearchForm() {
             <input
               value={zipsRaw}
               onChange={(e) => setZipsRaw(e.target.value)}
-              placeholder="59263, 30303"
+              placeholder="12345, 30303"
               className="mt-2 w-full rounded-2xl border border-ink-200 bg-white/60 px-4 py-3 font-mono text-sm text-ink-900 placeholder:text-ink-400 transition focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent-500/15"
             />
           </label>
