@@ -62,8 +62,13 @@ export default function SignalPage() {
     );
   }
 
-  // Signal reads SCOUT_CONFIG to force light theme + use /signal-api/.
-  const config = { apiBase: '/signal-api', embedded: true };
+  // Signal reads SCOUT_CONFIG to use /signal-api/, force light theme,
+  // and pick up the MapKit JS token at runtime.
+  const config = {
+    apiBase: '/signal-api',
+    mapkitToken: process.env.MAPKIT_TOKEN ?? '',
+    embedded: true
+  };
 
   return (
     <>

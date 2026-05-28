@@ -30,7 +30,12 @@ export default function SignalMap({ geojson, selectedId, onRegionSelect, scoreFi
       try {
         mapkit.init({
           authorizationCallback: done => {
-            done(import.meta.env.VITE_MAPKIT_TOKEN || '');
+            // Runtime-injected token from Scout (window.SCOUT_CONFIG.mapkitToken)
+            // takes precedence over the Vite-baked VITE_MAPKIT_TOKEN so the
+            // same build runs in both standalone and Scout-embedded modes.
+            const runtimeToken =
+              typeof window !== 'undefined' && window.SCOUT_CONFIG?.mapkitToken;
+            done(runtimeToken || import.meta.env.VITE_MAPKIT_TOKEN || '');
           },
         });
 
