@@ -6,7 +6,9 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-const MODEL = 'gemini-3-flash';
+// Configurable via env so the user can swap to gemini-3-pro-preview,
+// gemini-2.5-pro, or any future Flash model without a code change.
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 export function geminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
