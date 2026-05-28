@@ -77,14 +77,48 @@ export default function HotrodPage() {
 
   return (
     <>
-      {/* Override .hotrod-shell height to sit BELOW Scout's nav.
-          The standalone Hotrod default is 100vh; Scout subtracts the nav. */}
+      {/* Page-scoped CSS overrides for the /hotrod route. */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            .hotrod-shell { height: calc(100vh - 64px) !important; }
-            /* Hide Scout's footer on the coverage-map page — the dashboard is
-               meant to fill the viewport below the nav. */
+            /* Hide the 'Run analysis' CTA button on the Coverage Map page —
+               it's contextually wrong here. The button is the only
+               .btn-primary anchor inside the global header. */
+            body > header a.btn-primary { display: none !important; }
+
+            /* Bump the global nav above any of Hotrod's floating UI. Some
+               Hotrod controls use z-index up to ~500; we want the nav above
+               all of them. */
+            body > header { z-index: 1000 !important; }
+
+            /* Extend the Hotrod shell behind the nav so the nav's glass
+               backdrop-blur shows the map blurred through it (liquid-glass
+               look). isolation:isolate confines the shell's child z-indexes
+               into a new stacking context so they can't compete with the
+               nav. */
+            .hotrod-shell {
+              margin-top: -64px !important;
+              height: 100vh !important;
+              isolation: isolate !important;
+            }
+
+            /* Push every floating UI element below the nav (64px nav height
+               + 16px breathing room). The map itself stays full-viewport so
+               it shows blurred through the glass. */
+            .hotrod-shell .sidebar {
+              top: 64px !important;
+              height: calc(100vh - 64px) !important;
+            }
+            .hotrod-shell .map-toolbar,
+            .hotrod-shell .draw-hint,
+            .hotrod-shell #overbuild-legend,
+            .hotrod-shell .area-search-results,
+            .hotrod-shell .toast-host {
+              top: 80px !important;
+            }
+
+            /* Hide Scout's footer on this page — the dashboard fills the
+               viewport. */
             body > footer { display: none; }
           `
         }}
