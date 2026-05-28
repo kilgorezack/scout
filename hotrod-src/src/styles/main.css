@@ -619,8 +619,9 @@
 
 .search-input:focus {
   border-color: var(--accent);
-  background: #0d1117;
+  background: #ffffff;
   outline: none;
+  box-shadow: 0 0 0 4px var(--accent-subtle);
 }
 
 .search-input::-webkit-search-cancel-button {

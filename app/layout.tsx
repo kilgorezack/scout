@@ -34,23 +34,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span className="text-[15px] font-semibold tracking-tight text-ink-900">Scout</span>
               </Link>
               <nav className="flex items-center gap-1 text-sm">
-                <Link href="/analyze" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                <Link href="/analyze" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Analyze
                 </Link>
-                <Link href="/research" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                <Link href="/research" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Research
                 </Link>
                 {/* Plain <a> so navigation triggers a full page load — the
                     Hotrod app injects script tags via dangerouslySetInnerHTML
                     that only execute on initial HTML parse, not on a
                     client-side Next.js route change. */}
-                <a href="/hotrod" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                <a href="/hotrod" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Coverage map
                 </a>
-                <Link href="/ai-readiness" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                <Link href="/ai-readiness" className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   AI readiness
                 </Link>
-                <Link href="/analyze" className="btn-primary !py-1.5 !px-4 text-[13px]">
+                <Link href="/analyze" className="btn-primary whitespace-nowrap !py-1.5 !px-4 text-[13px]">
                   Run analysis
                 </Link>
               </nav>
