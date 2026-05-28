@@ -15,6 +15,7 @@ import { assignColor, releaseColor } from './utils/colors.js';
 import { fetchHexCoverage } from './map/hexCoverage.js';
 import { getCoverageGeoJSON } from './api/coverage.js';
 import { targetResolution, aggregateH3, h3ToGeoJSON, extractH3Indices } from './map/h3Resolution.js';
+import { API_BASE } from './config.js';
 
 // ─── App State ───────────────────────────────────────────────────────────────
 
@@ -219,7 +220,7 @@ async function checkApiHealth() {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch('/api/health', { signal: controller.signal });
+    const res = await fetch(`${API_BASE}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {

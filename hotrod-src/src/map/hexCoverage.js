@@ -10,6 +10,8 @@
  */
 
 // Form 477 sub-codes → BDC parent codes (mirrored in server/routes/hexAgg.js)
+import { API_BASE } from '../config.js';
+
 const FORM477_TO_BDC = {
   '11': '10', '12': '10', '20': '10', '30': '10', // DSL sub-codes → DSL (10)
   '41': '40', '43': '40',                          // DOCSIS 3+/3.1  → Cable (40)
@@ -38,7 +40,7 @@ export async function fetchHexCoverage(providerId, techCode) {
   console.info(`[hexCoverage] Requesting server-aggregated hex for ${providerId}:${bdcTech}${mapped}…`);
 
   try {
-    const res = await fetch(`/api/coverage/hex/${providerId}/${bdcTech}`);
+    const res = await fetch(`${API_BASE}/coverage/hex/${providerId}/${bdcTech}`);
 
     if (!res.ok) {
       console.warn(`[hexCoverage] Server returned ${res.status} for ${providerId}:${bdcTech}`);

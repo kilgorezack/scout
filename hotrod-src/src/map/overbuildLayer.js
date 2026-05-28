@@ -56,7 +56,7 @@ export async function toggleOverbuildLayer() {
 
 async function _loadIndex() {
   if (_indexPromise) return _indexPromise;
-  _indexPromise = fetch('/coverage_index_r3.json')
+  _indexPromise = fetch(`${import.meta.env.BASE_URL}coverage_index_r3.json`)
     .then(r => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
