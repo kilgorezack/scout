@@ -6,38 +6,45 @@
 // from public/hotrod/* with no transformation, matching the /hotrod/ base
 // path baked in at build time.
 
-import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET() {
-  const file = path.join(process.cwd(), 'public', 'hotrod', 'index.html');
-  let html: string;
+// Read once at module load (cold start) so the file lookup happens against the
+// function's bundled file tree, not at request time. next.config.js uses
+// outputFileTracingIncludes to ensure this file ships with the function.
+const HOTROD_HTML: string | null = (() => {
   try {
-    html = await fs.readFile(file, 'utf-8');
+    return readFileSync(
+      path.join(process.cwd(), 'public', 'hotrod', 'index.html'),
+      'utf-8'
+    );
   } catch {
-    return new Response('Hotrod build not found. Re-run the build step.', {
-      status: 500,
-      headers: { 'Content-Type': 'text/plain' }
-    });
+    return null;
+  }
+})();
+
+export async function GET() {
+  if (!HOTROD_HTML) {
+    return new Response(
+      'Hotrod build not found in this deploy. Make sure public/hotrod/index.html is committed and outputFileTracingIncludes is configured.',
+      { status: 500, headers: { 'Content-Type': 'text/plain' } }
+    );
   }
 
-  const mapkitToken = process.env.MAPKIT_TOKEN ?? '';
   const config = {
-    mapkitToken,
+    mapkitToken: process.env.MAPKIT_TOKEN ?? '',
     apiBase: '/hotrod-api'
   };
 
   const inject = `<script>window.SCOUT_CONFIG = ${JSON.stringify(config)};</script>`;
-  const injected = html.replace('</head>', `${inject}\n</head>`);
+  const injected = HOTROD_HTML.replace('</head>', `${inject}\n</head>`);
 
   return new Response(injected, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      // Don't aggressively cache — the injection includes a secret token
-      // that's per-deploy, not per-request, but we want fresh env on redeploy.
       'Cache-Control': 'no-store'
     }
   });

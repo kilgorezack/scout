@@ -9,6 +9,12 @@ const nextConfig = {
       './hotrod-src/**/*'
     ]
   },
+  // The /hotrod route handler reads public/hotrod/index.html at runtime to
+  // inject the MapKit token. Force the file into the function's bundle so
+  // it's available on Vercel.
+  outputFileTracingIncludes: {
+    '/hotrod': ['./public/hotrod/index.html']
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'ui-avatars.com' },
