@@ -152,6 +152,7 @@ export default function HotrodPage() {
             /* The Add Provider CTA: use Scout's chromatic gradient. */
             .hotrod-shell .btn-add-provider {
               background: linear-gradient(135deg, #0071e3 0%, #8b5cf6 50%, #ec4899 100%) !important;
+              color: #ffffff !important;
               border-radius: 14px !important;
               padding: 11px 16px !important;
               font-weight: 600 !important;
@@ -160,6 +161,11 @@ export default function HotrodPage() {
                 0 8px 24px -10px rgba(139, 92, 246, 0.55) !important;
               border: none !important;
               transition: transform 160ms ease, box-shadow 160ms ease !important;
+            }
+            .hotrod-shell .btn-add-provider,
+            .hotrod-shell .btn-add-provider svg,
+            .hotrod-shell .btn-add-provider * {
+              color: #ffffff !important;
             }
             .hotrod-shell .btn-add-provider:hover {
               transform: translateY(-1px) !important;
