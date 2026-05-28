@@ -94,14 +94,92 @@ export default function SignalPage() {
               inset: 0;
             }
 
-            /* Push Signal's own top nav (and any other top-aligned UI) below
-               Scout's global nav so the global nav stays unobscured. Signal
-               uses its own .signal-nav / .top-bar classes — both are
-               handled with !important top offset. */
-            .signal-shell .signal-nav,
+            /* ───────────────────────────────────────────────────────────
+               Signal's top nav becomes a floating LEFT side menu
+               ─────────────────────────────────────────────────────────── */
+            .signal-shell .app-header {
+              position: absolute !important;
+              top: 80px !important;
+              left: 16px !important;
+              right: auto !important;
+              width: 320px !important;
+              height: auto !important;
+              max-height: calc(100vh - 96px) !important;
+              flex-direction: column !important;
+              align-items: stretch !important;
+              justify-content: flex-start !important;
+              gap: 16px !important;
+              padding: 18px !important;
+              border-radius: 22px !important;
+              border: 1px solid rgba(255, 255, 255, 0.55) !important;
+              background: rgba(255, 255, 255, 0.72) !important;
+              backdrop-filter: blur(24px) saturate(160%) !important;
+              -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                0 1px 2px rgba(11, 15, 26, 0.04),
+                0 20px 48px -16px rgba(11, 15, 26, 0.22) !important;
+              overflow-y: auto !important;
+            }
+
+            /* Logo block — keep horizontal but full width inside the menu. */
+            .signal-shell .app-logo {
+              width: 100% !important;
+              justify-content: flex-start !important;
+            }
+            .signal-shell .app-logo-sub {
+              display: inline !important;
+            }
+
+            /* Tabs: full width, segmented pill look. */
+            .signal-shell .app-tabs {
+              width: 100% !important;
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 4px !important;
+            }
+            .signal-shell .app-tab {
+              width: 100% !important;
+              justify-content: center !important;
+            }
+
+            /* The right-side group stacks vertically and stretches. */
+            .signal-shell .app-header-right {
+              flex-direction: column !important;
+              align-items: stretch !important;
+              width: 100% !important;
+              gap: 12px !important;
+            }
+
+            /* Market selector: vertical list of country buttons. */
+            .signal-shell .market-selector {
+              flex-direction: column !important;
+              width: 100% !important;
+              gap: 4px !important;
+            }
+            .signal-shell .market-btn {
+              justify-content: flex-start !important;
+              width: 100% !important;
+              padding: 8px 12px !important;
+            }
+            .signal-shell .market-label {
+              display: inline !important;
+            }
+
+            /* Data badge below the market selector. */
+            .signal-shell .app-data-badge {
+              width: 100% !important;
+              text-align: left !important;
+              white-space: normal !important;
+              line-height: 1.4 !important;
+            }
+
+            /* Hide the theme toggle inside Scout — Scout forces light. */
+            .signal-shell .btn-theme { display: none !important; }
+
+            /* Any other top-aligned floaters get pushed below Scout's nav. */
             .signal-shell .top-bar,
-            .signal-shell .market-switcher,
-            .signal-shell .theme-toggle {
+            .signal-shell .market-switcher {
               top: 80px !important;
             }
 
