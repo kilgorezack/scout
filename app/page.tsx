@@ -30,6 +30,9 @@ export default function HomePage() {
             <Link href="/analyze" className="btn-primary text-[15px]">
               Run a market analysis <ArrowRight size={16} />
             </Link>
+            <Link href="/research" className="btn-ghost text-[15px]">
+              Research a competitor
+            </Link>
             <Link href="/ai-readiness" className="btn-ghost text-[15px]">
               Score my website
             </Link>

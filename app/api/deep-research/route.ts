@@ -11,7 +11,8 @@ function cacheKey(input: DeepResearchInput): string {
   return [
     input.competitorName.trim().toLowerCase(),
     (input.ownCompany ?? '').trim().toLowerCase(),
-    [...input.zips].sort().join(',')
+    [...input.zips].sort().join(','),
+    (input.websiteUrl ?? '').trim().toLowerCase()
   ].join('|');
 }
 

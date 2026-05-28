@@ -16,6 +16,7 @@ export type DeepResearchInput = {
   competitorName: string;
   ownCompany: string | null;
   zips: string[];
+  websiteUrl?: string; // optional — pasted by the user on the standalone research page
   technologies?: string[]; // FCC tech labels we know the competitor uses
   recentHeadlines?: string[]; // competitor news titles + dates we already have
 };
@@ -33,11 +34,11 @@ Bulleted list of concrete, dated events: product launches, network expansions, M
 ## Strategic posture
 One paragraph on where they're investing, where they're cutting back, and what their stated near-term priorities are. Reference earnings calls, investor decks, or press statements with inline URL citations.
 
-## Strengths in this footprint
-3–5 bullets. Concrete things they do well in the geography the user provided.
+## Strengths
+3–5 bullets. Concrete things they do well. If the user provided a geographic footprint, focus on that footprint; otherwise focus on their strongest national segments.
 
 ## Weaknesses & openings
-3–5 bullets. Specific weaknesses or gaps the user can exploit — speed, sentiment, technology choice, pricing, service quality, gaps in coverage, brand issues. Each bullet must hint at a counter-move.
+3–5 bullets. Specific weaknesses or gaps a competing CSP could exploit — speed, sentiment, technology choice, pricing, service quality, gaps in coverage, brand issues. Each bullet must hint at a counter-move.
 
 ## Customer sentiment themes
 2–4 bullets. Recurring themes from public reviews (Google, BBB, Reddit, regional forums). Quote a phrase if possible.
@@ -55,6 +56,7 @@ Rules:
 function buildUserPrompt(input: DeepResearchInput): string {
   const lines: string[] = [];
   lines.push(`Competitor to research: ${input.competitorName}`);
+  if (input.websiteUrl) lines.push(`Their website (use as a primary source): ${input.websiteUrl}`);
   if (input.ownCompany) lines.push(`Briefing requested by: ${input.ownCompany}`);
   if (input.zips.length) lines.push(`Target market (US ZIP codes): ${input.zips.join(', ')}`);
   if (input.technologies?.length) {

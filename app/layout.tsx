@@ -37,6 +37,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/analyze" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   Analyze
                 </Link>
+                <Link href="/research" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
+                  Research
+                </Link>
                 <Link href="/ai-readiness" className="hidden rounded-full px-3.5 py-1.5 text-ink-700 transition hover:text-ink-900 sm:inline-flex">
                   AI readiness
                 </Link>
