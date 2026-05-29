@@ -73,9 +73,19 @@ function CompetitorsList({ report }: { report: ReportPayload }) {
         .map((n) => `${n.title} (${n.publishedAt})`)
     : [];
 
-  // Denominator for footprint share: total served locations across every
-  // competitor in the report. Computed once, reused per card below.
-  const totalServedLocations = report.competitors.reduce((sum, c) => sum + c.totalLocations, 0);
+  // Footprint coverage denominator. `locationsServed` is proportional to the
+  // area a provider covers (in the live BDC path it's the count of map hexes
+  // it serves inside the ZIP × 15). The broadest provider in each ZIP — a
+  // satellite or incumbent that passes ~every location — approximates the
+  // total serviceable base there, so we take the max served per ZIP and sum
+  // across the whole footprint. A provider's coverage % is then its served
+  // locations over that total: satellite/nationwide players land at ~100%,
+  // FWA high, a regional overbuilder low.
+  const maxLocationsByZip = new Map<string, number>();
+  for (const r of report.providersByZip) {
+    maxLocationsByZip.set(r.zip, Math.max(maxLocationsByZip.get(r.zip) ?? 0, r.locationsServed));
+  }
+  const serviceableLocations = report.zips.reduce((sum, z) => sum + (maxLocationsByZip.get(z) ?? 0), 0);
 
   return (
     <>
@@ -92,13 +102,12 @@ function CompetitorsList({ report }: { report: ReportPayload }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {report.competitors.map((c) => {
           const review = report.reviews[c.providerName];
-          // Footprint share: this competitor's served locations as a percentage
-          // of every competitor's served locations across the footprint. Stays
-          // entirely within the BDC location data (consistent units, always
-          // 0–100%), so it's a real, well-defined number even for single-ZIP
-          // reports — unlike ZIP-presence, which is always 100% for one ZIP.
-          const footprintSharePct = totalServedLocations > 0
-            ? Math.round((c.totalLocations / totalServedLocations) * 100)
+          // Coverage of your footprint: this provider's served locations as a
+          // share of the total serviceable locations across your ZIPs. Bounded
+          // 0–100% by construction (a provider can't serve more than the max in
+          // any ZIP), and meaningful even on single-ZIP reports.
+          const coveragePct = serviceableLocations > 0
+            ? Math.min(100, Math.round((c.totalLocations / serviceableLocations) * 100))
             : 0;
           return (
             <div key={c.providerName} className="panel p-6">
@@ -106,7 +115,7 @@ function CompetitorsList({ report }: { report: ReportPayload }) {
                 <div className="min-w-0">
                   <h3 className="truncate text-[16px] font-semibold leading-snug text-ink-900">{c.providerName}</h3>
                   <p className="mt-1 text-xs text-ink-500">
-                    <span className="font-mono text-ink-800">{footprintSharePct}%</span> of served locations
+                    <span className="font-mono text-ink-800">{coveragePct}%</span> footprint coverage
                     <span className="text-ink-400"> · present in {c.zips.length} of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}</span>
                   </p>
                 </div>

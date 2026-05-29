@@ -194,7 +194,15 @@ function stubProvidersForZip(zip: string): ProviderInZip[] {
       if (!state || !p.states.includes(state)) continue;
     }
     if (rnd() > p.reach) continue;
-    const share = 0.15 + rnd() * 0.7;
+    // Share of the ZIP's locations this provider passes. Tech-dependent so the
+    // sample data mirrors reality: satellites cover essentially every location,
+    // fixed wireless blankets most of a market, while wireline footprints
+    // (fiber/cable/DSL) vary block to block. This is what makes satellite read
+    // ~100% footprint coverage and FWA high in the competitors view.
+    const share =
+      p.tech === 'Satellite' ? 0.97 + rnd() * 0.03 :
+      p.tech === 'FWA' ? 0.65 + rnd() * 0.3 :
+      0.15 + rnd() * 0.7;
     out.push({
       zip,
       providerName: p.name,
