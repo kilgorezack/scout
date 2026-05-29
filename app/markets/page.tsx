@@ -75,10 +75,6 @@ export default function SignalPage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            /* Hide the global 'Run analysis' button on /markets — feels
-               wrong here. */
-            body > header a.btn-primary { display: none !important; }
-
             /* Keep the global nav above any Signal floating UI. */
             body > header { z-index: 1000 !important; }
 

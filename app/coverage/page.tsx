@@ -81,11 +81,6 @@ export default function HotrodPage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            /* Hide the 'Run analysis' CTA button on the Coverage Map page —
-               it's contextually wrong here. The button is the only
-               .btn-primary anchor inside the global header. */
-            body > header a.btn-primary { display: none !important; }
-
             /* Bump the global nav above any of Hotrod's floating UI. Some
                Hotrod controls use z-index up to ~500; we want the nav above
                all of them. */
