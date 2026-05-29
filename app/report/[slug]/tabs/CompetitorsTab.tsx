@@ -73,6 +73,10 @@ function CompetitorsList({ report }: { report: ReportPayload }) {
         .map((n) => `${n.title} (${n.publishedAt})`)
     : [];
 
+  // Denominator for footprint share: total served locations across every
+  // competitor in the report. Computed once, reused per card below.
+  const totalServedLocations = report.competitors.reduce((sum, c) => sum + c.totalLocations, 0);
+
   return (
     <>
       <div className="mb-7">
@@ -88,13 +92,22 @@ function CompetitorsList({ report }: { report: ReportPayload }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {report.competitors.map((c) => {
           const review = report.reviews[c.providerName];
+          // Footprint share: this competitor's served locations as a percentage
+          // of every competitor's served locations across the footprint. Stays
+          // entirely within the BDC location data (consistent units, always
+          // 0–100%), so it's a real, well-defined number even for single-ZIP
+          // reports — unlike ZIP-presence, which is always 100% for one ZIP.
+          const footprintSharePct = totalServedLocations > 0
+            ? Math.round((c.totalLocations / totalServedLocations) * 100)
+            : 0;
           return (
             <div key={c.providerName} className="panel p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="truncate text-[16px] font-semibold leading-snug text-ink-900">{c.providerName}</h3>
                   <p className="mt-1 text-xs text-ink-500">
-                    Overlap in <span className="font-mono text-ink-800">{c.zips.length}</span> of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}
+                    <span className="font-mono text-ink-800">{footprintSharePct}%</span> of served locations
+                    <span className="text-ink-400"> · present in {c.zips.length} of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}</span>
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-bg-subtle px-2.5 py-1 text-[11px] font-medium text-ink-700">
