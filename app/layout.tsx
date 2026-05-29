@@ -37,7 +37,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="glass flex h-12 items-center justify-between rounded-full px-2 pl-4 pr-2">
               <Link href="/" className="flex items-center gap-2.5">
                 <span className="relative grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-500 via-fuchsia-500 to-purple-600 shadow-glow">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] animate-pulse-dot" />
+                  {/* Puppy silhouette — Scout's mascot, sitting inside the
+                      gradient mark. Ears + head + muzzle in white, eyes/nose
+                      in deep purple to tie back to the gradient. */}
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                    <ellipse cx="5.4" cy="13.5" rx="2.7" ry="5.6" transform="rotate(-14 5.4 13.5)" fill="#fff" />
+                    <ellipse cx="18.6" cy="13.5" rx="2.7" ry="5.6" transform="rotate(14 18.6 13.5)" fill="#fff" />
+                    <ellipse cx="12" cy="11.6" rx="5.9" ry="5.7" fill="#fff" />
+                    <ellipse cx="12" cy="16.2" rx="3.9" ry="3.3" fill="#fff" />
+                    <ellipse cx="9.6" cy="11" rx="0.95" ry="1.25" fill="#6b21a8" />
+                    <ellipse cx="14.4" cy="11" rx="0.95" ry="1.25" fill="#6b21a8" />
+                    <ellipse cx="12" cy="15" rx="1.45" ry="1.15" fill="#6b21a8" />
+                  </svg>
                 </span>
                 <span className="text-[15px] font-semibold tracking-tight text-ink-900">Scout</span>
               </Link>
