@@ -50,26 +50,47 @@ export async function loadReportInput(slug: string): Promise<ReportInput | null>
   return decodeSlug(slug);
 }
 
+// Resolve `p`, but never wait longer than `ms` — on timeout, resolve `fallback`
+// instead. This guards the report build against any single upstream call
+// hanging (a stalled fetch never rejects, so `.catch` alone can't save us) and
+// blowing the function's maxDuration, which surfaces to the user as
+// "Connection closed".
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+  ]);
+}
+
+function emptyProviders(zips: string[], error: string): ProvidersResult {
+  return {
+    rows: [],
+    source: 'none',
+    hotrod: {
+      bucket: '',
+      zipsResolved: Object.fromEntries(zips.map((z) => [z, 0])),
+      candidatesFromIndex: 0,
+      providersScanned: 0,
+      matchesFound: 0,
+      totalMillis: 0,
+      error
+    }
+  };
+}
+
 export async function buildReport(input: ReportInput): Promise<ReportPayload> {
-  // Every awaited call below is wrapped so a single failure can't blank the
-  // whole briefing — we'd rather render with partial data than a 500.
+  // Every awaited call below is wrapped so a single failure — or a hang — can't
+  // blank the whole briefing. We'd rather render with partial data than a 500
+  // or a timed-out connection.
   let providersResult: ProvidersResult;
   try {
-    providersResult = await providersForZipsWithSource(input.zips);
+    providersResult = await withTimeout(
+      providersForZipsWithSource(input.zips),
+      45_000,
+      emptyProviders(input.zips, 'Provider lookup timed out')
+    );
   } catch (e) {
-    providersResult = {
-      rows: [],
-      source: 'hotrod',
-      hotrod: {
-        bucket: '',
-        zipsResolved: Object.fromEntries(input.zips.map((z) => [z, 0])),
-        candidatesFromIndex: 0,
-        providersScanned: 0,
-        matchesFound: 0,
-        totalMillis: 0,
-        error: e instanceof Error ? e.message : 'Unknown error'
-      }
-    };
+    providersResult = emptyProviders(input.zips, e instanceof Error ? e.message : 'Unknown error');
   }
   const providersByZip = providersResult.rows;
   const ownLower = (input.companyName ?? '').trim().toLowerCase();
@@ -80,18 +101,19 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   const competitors = summarizeByProvider(filtered);
   const providerNames = competitors.map((c) => c.providerName);
 
+  const zeroDemographics = input.zips.map((z) => ({
+    zip: z,
+    population: 0,
+    households: 0,
+    housingUnits: 0,
+    medianHouseholdIncome: 0,
+    ownerOccupiedPct: 0,
+    businessEstablishments: 0
+  }));
   const [reviewsMap, news, demographics] = await Promise.all([
-    reviewsForProviders(providerNames).catch(() => new Map()),
-    newsForProviders(providerNames).catch(() => []),
-    demographicsForZips(input.zips).catch(() => input.zips.map((z) => ({
-      zip: z,
-      population: 0,
-      households: 0,
-      housingUnits: 0,
-      medianHouseholdIncome: 0,
-      ownerOccupiedPct: 0,
-      businessEstablishments: 0
-    })))
+    withTimeout(reviewsForProviders(providerNames), 8_000, new Map()).catch(() => new Map()),
+    withTimeout(newsForProviders(providerNames), 8_000, []).catch(() => []),
+    withTimeout(demographicsForZips(input.zips), 10_000, zeroDemographics).catch(() => zeroDemographics)
   ]);
 
   const reviews: Record<string, ProviderReview> = {};
