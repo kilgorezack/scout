@@ -124,7 +124,7 @@ function SourceBadge({
   source,
   diagnostics
 }: {
-  source: 'hotrod' | 'supabase' | 'stub';
+  source: 'hotrod' | 'supabase' | 'none';
   diagnostics?: {
     providersScanned: number;
     matchesFound: number;
@@ -136,7 +136,7 @@ function SourceBadge({
   const labels = {
     hotrod: { text: 'Live FCC BDC', tone: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30' },
     supabase: { text: 'Supabase BDC', tone: 'bg-accent-400/10 text-accent-300 border-accent-400/30' },
-    stub: { text: 'Seeded sample data', tone: 'bg-amber-400/10 text-amber-300 border-amber-400/30' }
+    none: { text: 'No provider data', tone: 'bg-ink-400/10 text-ink-300 border-ink-400/30' }
   } as const;
   const l = labels[source];
   return (

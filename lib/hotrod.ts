@@ -22,7 +22,11 @@ import indexJson from './hotrod-index.json';
 const BUCKET = process.env.HOTROD_BUCKET || 'hotrod-7a59d.firebasestorage.app';
 const ENABLED = process.env.HOTROD_ENABLED !== 'false';
 const RES = 8;
-const RING_K = 12;
+// Only used when a ZIP's real polygon can't be resolved. Kept tight on
+// purpose: a large disk around the centroid bleeds into neighboring towns —
+// and across state lines near borders — pulling in providers that don't
+// actually serve the ZIP.
+const FALLBACK_RING_K = 2;
 
 const url = {
   hexes: (id: string, tech: string) =>
@@ -124,7 +128,7 @@ function getZipHexes(zip: string): Promise<Set<string>> {
           if (!ring || ring.length < 4) continue;
           const polygon = [ring.map((p) => [p[1], p[0]] as [number, number])];
           try {
-            for (const c of polygonToCells(polygon, RES)) cells.add(c);
+            for (const cell of polygonToCells(polygon, RES)) cells.add(cell);
           } catch {
             // ignore
           }
@@ -132,7 +136,16 @@ function getZipHexes(zip: string): Promise<Set<string>> {
       }
       if (c) {
         const center = latLngToCell(c[0], c[1], RES);
-        for (const h of gridDisk(center, RING_K)) cells.add(h);
+        if (cells.size === 0) {
+          // No usable polygon — fall back to a tight disk around the centroid
+          // so we still return something, without bleeding across borders.
+          for (const h of gridDisk(center, FALLBACK_RING_K)) cells.add(h);
+        } else {
+          // Polygon resolved. Just guarantee the centroid hex is included —
+          // a tiny urban ZIP can be smaller than one res-8 hex, so
+          // polygonToCells may legitimately return zero cells over its center.
+          cells.add(center);
+        }
       }
       return cells;
     })();
