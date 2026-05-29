@@ -86,6 +86,26 @@ export default function HotrodPage() {
                all of them. */
             body > header { z-index: 1000 !important; }
 
+            /* The vendored Hotrod stylesheet defines a global, unscoped
+               .btn-primary (blue, full-width, 10px radius) that bleeds onto
+               the Scout nav's "Run analysis" button. Re-assert Scout's black
+               pill styling for the header button so it matches every other
+               page. Higher specificity (body > header a.btn-primary) beats
+               the vendored .btn-primary rule. */
+            body > header a.btn-primary {
+              width: auto !important;
+              background: #1d1d1f !important;
+              color: #fff !important;
+              border-radius: 9999px !important;
+              padding: 0.375rem 1rem !important;
+              font-size: 13px !important;
+              gap: 0.5rem !important;
+              box-shadow: 0 4px 6px -2px rgba(0,0,0,0.04), 0 20px 50px -20px rgba(0,0,0,0.15) !important;
+            }
+            body > header a.btn-primary:hover {
+              background: #262628 !important;
+            }
+
             /* Extend the Hotrod shell behind the nav so the nav's glass
                backdrop-blur shows the map blurred through it (liquid-glass
                look). isolation:isolate confines the shell's child z-indexes
