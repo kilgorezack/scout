@@ -66,13 +66,21 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {report.competitors.map((c) => {
           const review = report.reviews[c.providerName];
+          // ZIP-presence overlap: the share of the report's ZIPs this competitor
+          // also appears in. This is the only overlap metric fully backed by the
+          // data — location counts are summed across providers, so we can't
+          // honestly intersect them at the address level.
+          const overlapPct = report.zips.length > 0
+            ? Math.round((c.zips.length / report.zips.length) * 100)
+            : 0;
           return (
             <div key={c.providerName} className="panel p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="truncate text-[16px] font-semibold leading-snug text-ink-900">{c.providerName}</h3>
                   <p className="mt-1 text-xs text-ink-500">
-                    Overlap in <span className="font-mono text-ink-800">{c.zips.length}</span> of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}
+                    <span className="font-mono text-ink-800">{overlapPct}%</span> ZIP overlap
+                    <span className="text-ink-400"> · {c.zips.length} of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}</span>
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-bg-subtle px-2.5 py-1 text-[11px] font-medium text-ink-700">
