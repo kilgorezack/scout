@@ -65,6 +65,14 @@ function getDb(): Firestore | null {
           projectId: FIREBASE_PROJECT_ID
         });
     db = getFirestore(app);
+    // Without this, a single `undefined` field value (e.g. an absent
+    // own_company) makes the whole write throw — which would silently drop
+    // one record while others succeed.
+    try {
+      db.settings({ ignoreUndefinedProperties: true });
+    } catch {
+      // settings() throws if called after first use; safe to ignore.
+    }
     console.info(`${TAG} initialized for project "${FIREBASE_PROJECT_ID}".`);
     return db;
   } catch (e) {
