@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { streamDeepResearch, geminiConfigured, type DeepResearchInput } from '@/lib/gemini';
-import { getSupabase } from '@/lib/supabase';
+import { getCached, setCached } from '@/lib/firestore-cache';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const CACHE_TTL_DAYS = 7;
+const CACHE_COLLECTION = 'competitor_research';
 
 function cacheKey(input: DeepResearchInput): string {
   return [
@@ -17,33 +18,15 @@ function cacheKey(input: DeepResearchInput): string {
 }
 
 async function readCached(key: string): Promise<string | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-  const { data } = await supabase
-    .from('competitor_research')
-    .select('briefing, created_at')
-    .eq('cache_key', key)
-    .maybeSingle();
-  if (!data) return null;
-  const ageMs = Date.now() - new Date(data.created_at).getTime();
-  if (ageMs > CACHE_TTL_DAYS * 24 * 60 * 60 * 1000) return null;
-  return data.briefing as string;
+  return getCached<string>(CACHE_COLLECTION, key, CACHE_TTL_DAYS);
 }
 
 async function writeCached(key: string, briefing: string, input: DeepResearchInput): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase) return;
-  await supabase
-    .from('competitor_research')
-    .upsert({
-      cache_key: key,
-      competitor_name: input.competitorName,
-      own_company: input.ownCompany,
-      zips: input.zips,
-      briefing,
-      created_at: new Date().toISOString()
-    })
-    .then(() => undefined, () => undefined);
+  await setCached(CACHE_COLLECTION, key, briefing, {
+    competitor_name: input.competitorName,
+    own_company: input.ownCompany,
+    zips: input.zips
+  });
 }
 
 export async function POST(req: Request) {

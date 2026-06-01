@@ -10,10 +10,11 @@
 // Required env: GEMINI_API_KEY
 
 import { GoogleGenAI } from '@google/genai';
-import { getSupabase } from './supabase';
+import { getCached, setCached } from './firestore-cache';
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const CACHE_TTL_DAYS = 7;
+const CACHE_COLLECTION = 'competitor_plans';
 
 export function plansConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
@@ -128,32 +129,14 @@ function coerce(raw: unknown, providerName: string): CompetitorPlans {
 }
 
 async function readCached(key: string): Promise<CompetitorPlans | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-  const { data } = await supabase
-    .from('competitor_plans')
-    .select('plans, created_at')
-    .eq('cache_key', key)
-    .maybeSingle();
-  if (!data) return null;
-  const ageMs = Date.now() - new Date(data.created_at as string).getTime();
-  if (ageMs > CACHE_TTL_DAYS * 24 * 60 * 60 * 1000) return null;
-  return data.plans as CompetitorPlans;
+  return getCached<CompetitorPlans>(CACHE_COLLECTION, key, CACHE_TTL_DAYS);
 }
 
 async function writeCached(key: string, plans: CompetitorPlans, input: PlansInput): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase) return;
-  await supabase
-    .from('competitor_plans')
-    .upsert({
-      cache_key: key,
-      provider_name: input.providerName,
-      zips: input.zips ?? [],
-      plans,
-      created_at: new Date().toISOString()
-    })
-    .then(() => undefined, () => undefined);
+  await setCached(CACHE_COLLECTION, key, plans, {
+    provider_name: input.providerName,
+    zips: input.zips ?? []
+  });
 }
 
 export async function researchCompetitorPlans(input: PlansInput): Promise<CompetitorPlans> {

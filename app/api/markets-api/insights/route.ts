@@ -8,6 +8,7 @@
 // Web Response.
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getCached, setCached } from '@/lib/firestore-cache';
 
 // Import the prompt builders directly from Signal's vendored API file.
 // signal-src/api/insights.d.ts declares the surface so this typechecks
@@ -24,6 +25,15 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+const CACHE_TTL_DAYS = 7;
+const CACHE_COLLECTION = 'market_insights';
+
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  Connection: 'keep-alive'
+} as const;
 
 export async function POST(req: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -54,6 +64,22 @@ export async function POST(req: Request) {
   }
 
   const enc = new TextEncoder();
+
+  // The prompt is a deterministic function of `properties`, so it doubles as
+  // the cache key — identical inputs reuse a stored analysis.
+  const cached = await getCached<string>(CACHE_COLLECTION, prompt, CACHE_TTL_DAYS);
+  if (cached) {
+    const replay = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ delta: cached })}\n\n`));
+        controller.enqueue(enc.encode(`data: [DONE]\n\n`));
+        controller.close();
+      }
+    });
+    return new Response(replay, { headers: SSE_HEADERS });
+  }
+
+  let accumulated = '';
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
@@ -69,11 +95,18 @@ export async function POST(req: Request) {
         for await (const chunk of result.stream) {
           const text = chunk.text();
           if (text) {
+            accumulated += text;
             controller.enqueue(enc.encode(`data: ${JSON.stringify({ delta: text })}\n\n`));
           }
         }
         controller.enqueue(enc.encode(`data: [DONE]\n\n`));
         controller.close();
+        if (accumulated.trim().length > 0) {
+          await setCached(CACHE_COLLECTION, prompt, accumulated, {
+            market: typeof market === 'string' ? market : 'au',
+            business: isBusiness
+          });
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         controller.enqueue(enc.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
@@ -82,11 +115,5 @@ export async function POST(req: Request) {
     }
   });
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive'
-    }
-  });
+  return new Response(stream, { headers: SSE_HEADERS });
 }
