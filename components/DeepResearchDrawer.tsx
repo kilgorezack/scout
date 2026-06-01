@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { X, Sparkles, Loader2, AlertCircle, Info } from 'lucide-react';
 
 type Props = {
   open: boolean;
@@ -180,6 +180,20 @@ export default function DeepResearchDrawer({
           {!text && !error && status === 'streaming' && (
             <p className="animate-pulse text-sm text-ink-500">Researching the public record…</p>
           )}
+          {text && (status === 'done' || status === 'cached') && isLowSignal(text) && (
+            <div className="mb-4 flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              <Info size={16} className="mt-0.5 shrink-0" />
+              <div>
+                <div className="font-semibold">Limited public information for this provider</div>
+                <div className="mt-1 text-xs leading-relaxed text-sky-800">
+                  Smaller, regional, or privately held providers leave little public footprint,
+                  so most sections below come back without sourced data — that&apos;s expected, not an
+                  error (we never fabricate figures). The coverage, technologies, and speeds Scout
+                  already has for this provider are on the Competitors and Comparison tabs.
+                </div>
+              </div>
+            </div>
+          )}
           {text && (
             <article className="prose prose-sm max-w-none text-ink-800">
               <MarkdownLite source={text} />
@@ -196,6 +210,20 @@ export default function DeepResearchDrawer({
       </aside>
     </div>
   );
+}
+
+/**
+ * A briefing is "low signal" when the model fell back to its
+ * no-evidence sentinel ("No public signal found.") for most sections —
+ * typical for tiny rural/regional providers with little public footprint.
+ * We surface a friendly note instead of letting it read like an error.
+ */
+function isLowSignal(text: string): boolean {
+  const empties = (text.match(/No public signal found\./gi) || []).length;
+  const sections = (text.match(/^##\s+/gm) || []).length;
+  if (empties === 0) return false;
+  if (sections === 0) return empties >= 3;
+  return empties / sections >= 0.5;
 }
 
 /**
