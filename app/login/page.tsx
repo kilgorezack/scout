@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   signInWithEmailAndPassword,
@@ -36,12 +35,12 @@ function friendly(code: string): string {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigated = useRef(false);
 
   // Complete a redirect-based Google sign-in if we came back from one (used as
   // a fallback when popups are blocked). Errors surface here.
@@ -51,24 +50,34 @@ export default function LoginPage() {
     });
   }, []);
 
-  // If the user is already signed in (or finishes signing in), make sure the
-  // session cookie is set before navigating to the protected destination.
+  // When the user is (or becomes) signed in, set the session cookie and ONLY
+  // THEN navigate — with a hard load so the cookie is sent and middleware
+  // authorizes the destination in one shot. A soft client navigation here
+  // races the Set-Cookie and gets bounced back to /login.
   useEffect(() => {
     return onIdTokenChanged(auth, async (u) => {
-      if (!u) return;
+      if (!u || navigated.current) return;
       try {
         const idToken = await u.getIdToken();
-        await fetch('/api/auth/session', {
+        const res = await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken })
         });
+        if (!res.ok) {
+          setError('Signed in, but the server could not start a session. Please try again.');
+          setBusy(false);
+          return;
+        }
       } catch {
-        /* AuthProvider will retry the cookie sync */
+        setError('Network error while starting your session. Please try again.');
+        setBusy(false);
+        return;
       }
-      router.replace(safeNext());
+      navigated.current = true;
+      window.location.assign(safeNext());
     });
-  }, [router]);
+  }, []);
 
   async function withEmail(e: React.FormEvent) {
     e.preventDefault();
