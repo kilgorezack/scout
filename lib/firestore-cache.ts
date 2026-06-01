@@ -37,12 +37,21 @@ function parseServiceAccount(): Record<string, unknown> | null {
   }
 }
 
+const TAG = '[firestore-cache]';
+
 /** Lazily initialize Firestore. Returns null when unconfigured/misconfigured. */
 function getDb(): Firestore | null {
   if (db !== undefined) return db;
 
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    console.warn(`${TAG} disabled: FIREBASE_SERVICE_ACCOUNT_KEY is not set — queries run live, nothing is cached.`);
+    db = null;
+    return null;
+  }
+
   const serviceAccount = parseServiceAccount();
   if (!serviceAccount) {
+    console.error(`${TAG} disabled: FIREBASE_SERVICE_ACCOUNT_KEY is set but is not valid JSON (or base64 JSON).`);
     db = null;
     return null;
   }
@@ -56,8 +65,10 @@ function getDb(): Firestore | null {
           projectId: FIREBASE_PROJECT_ID
         });
     db = getFirestore(app);
+    console.info(`${TAG} initialized for project "${FIREBASE_PROJECT_ID}".`);
     return db;
-  } catch {
+  } catch (e) {
+    console.error(`${TAG} init failed:`, e instanceof Error ? e.message : e);
     db = null;
     return null;
   }
@@ -91,7 +102,8 @@ export async function getCached<T>(
     const ageMs = Date.now() - new Date(data.created_at).getTime();
     if (Number.isNaN(ageMs) || ageMs > ttlDays * 24 * 60 * 60 * 1000) return null;
     return data.value;
-  } catch {
+  } catch (e) {
+    console.warn(`${TAG} read failed on "${collection}":`, e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -114,7 +126,9 @@ export async function setCached<T>(
       .collection(collection)
       .doc(docId(key))
       .set({ ...meta, cache_key: key, value, created_at: new Date().toISOString() });
-  } catch {
+    console.info(`${TAG} wrote to "${collection}" (${docId(key)}).`);
+  } catch (e) {
     // best-effort — a failed cache write must never break the response
+    console.error(`${TAG} write failed on "${collection}":`, e instanceof Error ? e.message : e);
   }
 }

@@ -100,13 +100,16 @@ export async function POST(req: Request) {
           }
         }
         controller.enqueue(enc.encode(`data: [DONE]\n\n`));
-        controller.close();
+        // Persist BEFORE closing the stream and await it — on serverless the
+        // function can freeze once the response stream closes, dropping a
+        // post-close write.
         if (accumulated.trim().length > 0) {
           await setCached(CACHE_COLLECTION, prompt, accumulated, {
             market: typeof market === 'string' ? market : 'au',
             business: isBusiness
           });
         }
+        controller.close();
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         controller.enqueue(enc.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));

@@ -87,10 +87,13 @@ export async function POST(req: Request) {
         const msg = e instanceof Error ? e.message : String(e);
         controller.enqueue(enc.encode(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`));
       } finally {
-        controller.close();
+        // Persist BEFORE closing the stream and await it: on serverless the
+        // function can be frozen the moment the response stream closes, which
+        // would drop a fire-and-forget write.
         if (accumulated.trim().length > 0) {
-          writeCached(key, accumulated, input).catch(() => {});
+          await writeCached(key, accumulated, input);
         }
+        controller.close();
       }
     }
   });
