@@ -7,6 +7,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onIdTokenChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -28,6 +30,8 @@ function friendly(code: string): string {
   if (code.includes('invalid-email')) return 'That doesn’t look like a valid email address.';
   if (code.includes('popup-closed')) return 'Sign-in window closed before finishing.';
   if (code.includes('popup-blocked')) return 'Your browser blocked the sign-in popup.';
+  if (code.includes('unauthorized-domain'))
+    return 'This domain isn’t authorized for Google sign-in yet. (Admin: add it under Firebase → Authentication → Settings → Authorized domains.)';
   return 'Something went wrong. Please try again.';
 }
 
@@ -38,6 +42,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Complete a redirect-based Google sign-in if we came back from one (used as
+  // a fallback when popups are blocked). Errors surface here.
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      setError(friendly(err instanceof Error && 'code' in err ? String((err as { code: string }).code) : ''));
+    });
+  }, []);
 
   // If the user is already signed in (or finishes signing in), make sure the
   // session cookie is set before navigating to the protected destination.
@@ -75,11 +87,28 @@ export default function LoginPage() {
   async function withGoogle() {
     setBusy(true);
     setError(null);
+    const codeOf = (err: unknown) =>
+      err instanceof Error && 'code' in err ? String((err as { code: string }).code) : '';
     try {
       await signInWithPopup(auth, googleProvider);
+      // onIdTokenChanged handles the cookie + redirect.
     } catch (err) {
-      setError(friendly(err instanceof Error && 'code' in err ? String((err as { code: string }).code) : ''));
-      setBusy(false);
+      const code = codeOf(err);
+      // Popups are commonly blocked or broken by strict privacy settings
+      // (Firefox/Safari storage partitioning). Fall back to a full-page
+      // redirect, which doesn't rely on a third-party popup window.
+      if (code.includes('popup')) {
+        try {
+          await signInWithRedirect(auth, googleProvider); // navigates away
+          return;
+        } catch (err2) {
+          setError(friendly(codeOf(err2)));
+          setBusy(false);
+        }
+      } else {
+        setError(friendly(code));
+        setBusy(false);
+      }
     }
   }
 
@@ -143,7 +172,11 @@ export default function LoginPage() {
           }}
           className="mt-4 w-full text-center text-xs text-ink-500 transition hover:text-ink-800"
         >
-          {mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in'}
+          {mode === 'signin' ? (
+            <>Need an account? <span className="font-semibold text-ink-900">Create one</span></>
+          ) : (
+            <>Already have an account? <span className="font-semibold text-ink-900">Sign in</span></>
+          )}
         </button>
       </div>
     </div>
