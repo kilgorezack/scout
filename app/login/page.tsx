@@ -31,6 +31,8 @@ function friendly(code: string): string {
   if (code.includes('popup-blocked')) return 'Your browser blocked the sign-in popup.';
   if (code.includes('unauthorized-domain'))
     return 'This domain isn’t authorized for Google sign-in yet. (Admin: add it under Firebase → Authentication → Settings → Authorized domains.)';
+  if (code.includes('password-does-not-meet-requirements'))
+    return 'Password doesn’t meet the requirements. Use 8+ characters with upper, lower, a number, and a special character.';
   return 'Something went wrong. Please try again.';
 }
 
@@ -38,9 +40,22 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigated = useRef(false);
+
+  // Mirror the Firebase project's password policy so users get live feedback
+  // instead of a rejected sign-up. (8+ chars, upper, lower, number, special.)
+  const requirements = [
+    { label: 'At least 8 characters', ok: password.length >= 8 },
+    { label: 'An uppercase letter', ok: /[A-Z]/.test(password) },
+    { label: 'A lowercase letter', ok: /[a-z]/.test(password) },
+    { label: 'A number', ok: /[0-9]/.test(password) },
+    { label: 'A special character', ok: /[^A-Za-z0-9]/.test(password) }
+  ];
+  const allRequirementsMet = requirements.every((r) => r.ok);
+  const passwordsMatch = password.length > 0 && password === confirm;
 
   // Complete a redirect-based Google sign-in if we came back from one (used as
   // a fallback when popups are blocked). Errors surface here.
@@ -81,8 +96,18 @@ export default function LoginPage() {
 
   async function withEmail(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    if (mode === 'signup') {
+      if (!allRequirementsMet) {
+        setError('Please meet all the password requirements below.');
+        return;
+      }
+      if (password !== confirm) {
+        setError('Passwords don’t match.');
+        return;
+      }
+    }
+    setBusy(true);
     try {
       if (mode === 'signup') await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth, email, password);
@@ -164,10 +189,40 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             className="w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-accent-400 focus:outline-none"
           />
+          {mode === 'signup' && (
+            <>
+              <input
+                type="password"
+                required
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Confirm password"
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-accent-400 focus:outline-none"
+              />
+              <ul className="space-y-1 pt-1 text-[11px]">
+                {requirements.map((r) => (
+                  <li key={r.label} className={`flex items-center gap-1.5 ${r.ok ? 'text-emerald-600' : 'text-ink-400'}`}>
+                    <span aria-hidden>{r.ok ? '✓' : '○'}</span>
+                    {r.label}
+                  </li>
+                ))}
+                <li className={`flex items-center gap-1.5 ${passwordsMatch ? 'text-emerald-600' : 'text-ink-400'}`}>
+                  <span aria-hidden>{passwordsMatch ? '✓' : '○'}</span>
+                  Passwords match
+                </li>
+              </ul>
+            </>
+          )}
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <button type="submit" disabled={busy} className="btn-primary w-full justify-center disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={busy || (mode === 'signup' && (!allRequirementsMet || !passwordsMatch))}
+            className="btn-primary w-full justify-center disabled:opacity-50"
+          >
             {busy && <Loader2 size={15} className="animate-spin" />}
             {mode === 'signup' ? 'Create account' : 'Sign in'}
           </button>
@@ -178,6 +233,7 @@ export default function LoginPage() {
           onClick={() => {
             setMode((m) => (m === 'signin' ? 'signup' : 'signin'));
             setError(null);
+            setConfirm('');
           }}
           className="mt-4 w-full text-center text-xs text-ink-500 transition hover:text-ink-800"
         >
