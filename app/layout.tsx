@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
 import { Inter } from 'next/font/google';
+import AuthProvider from '@/components/AuthProvider';
+import NavAuth from '@/components/NavAuth';
 
 const CLARITY_PROJECT_ID = 'wxz5ocmlrb';
 
@@ -32,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className="min-h-screen font-sans antialiased">
+        <AuthProvider>
         <header className="sticky top-0 z-50">
           <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6">
             <div className="glass flex h-12 items-center justify-between rounded-full px-2 pl-4 pr-2">
@@ -65,6 +68,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/analyze" className="btn-primary whitespace-nowrap !py-1.5 !px-4 text-[13px]">
                   Run analysis
                 </Link>
+                <span className="ml-1 hidden h-5 w-px bg-ink-200 sm:inline-block" />
+                <NavAuth />
               </nav>
             </div>
           </div>
@@ -79,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <p className="text-ink-400">© 2026 Summit Digital Labs</p>
           </div>
         </footer>
+        </AuthProvider>
       </body>
     </html>
   );
