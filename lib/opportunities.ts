@@ -95,7 +95,7 @@ export function generateOpportunities(args: {
       solution: findSolution('home-office'),
       rationaleHeadline: 'High-income ZIPs over-index on work-from-home demand.',
       rationaleDetail:
-        `${highIncomeZips.length} ZIP${highIncomeZips.length > 1 ? 's' : ''} in this footprint sit at least 15% above the market median household income — ideal targets for a Home OfficeIQ premium tier.`,
+        `${highIncomeZips.length} ZIP${highIncomeZips.length > 1 ? 's' : ''} in this footprint sit at least 15% above the market median household income — ideal targets for a HomeOffice Pro premium tier.`,
       targetZips: highIncomeZips,
       evidence: highIncomeZips
         .slice(0, 5)
@@ -111,7 +111,7 @@ export function generateOpportunities(args: {
       solution: findSolution('smart-biz'),
       rationaleHeadline: 'Concentrated small-business footprint to upsell into managed SMB connectivity.',
       rationaleDetail:
-        `${smbZips.length} ZIP${smbZips.length > 1 ? 's' : ''} show business establishment counts 20%+ above market median — strong candidates for a SmartBiz managed-WiFi rollout.`,
+        `${smbZips.length} ZIP${smbZips.length > 1 ? 's' : ''} show business establishment counts 20%+ above market median — strong candidates for a BusinessConnect managed-WiFi rollout.`,
       targetZips: smbZips,
       evidence: smbZips
         .slice(0, 5)
@@ -120,7 +120,7 @@ export function generateOpportunities(args: {
     });
   }
 
-  // Identify ZIPs that look civic / dense for SmartTown / SmartMDU.
+  // Identify ZIPs that look civic / dense for CommunityConnect / PropertyConnect.
   const denseZips = zips.filter((z) => {
     const hu = housingByZip.get(z) ?? 0;
     const hh = householdsByZip.get(z) ?? 0;
@@ -132,7 +132,7 @@ export function generateOpportunities(args: {
       solution: findSolution('smart-mdu'),
       rationaleHeadline: 'Dense housing footprint ready for an MDU/civic managed-connectivity play.',
       rationaleDetail:
-        `${denseZips.length} ZIP${denseZips.length > 1 ? 's' : ''} have housing-unit density consistent with significant MDU stock. SmartMDU or SmartTown packaging unlocks bulk-billing and civic partnerships.`,
+        `${denseZips.length} ZIP${denseZips.length > 1 ? 's' : ''} have housing-unit density consistent with significant MDU stock. PropertyConnect or CommunityConnect packaging unlocks bulk-billing and civic partnerships.`,
       targetZips: denseZips,
       evidence: denseZips
         .slice(0, 5)
@@ -158,7 +158,7 @@ export function generateOpportunities(args: {
       solution: findSolution('smart-home'),
       rationaleHeadline: 'Fiber whitespace — no fiber competitor in these ZIPs.',
       rationaleDetail:
-        'These ZIPs have no fiber competitor active in the BDC data. A fiber-led SmartHome experience launches without a head-to-head fiber rival.',
+        'These ZIPs have no fiber competitor active in the BDC data. A fiber-led HomeConnect experience launches without a head-to-head fiber rival.',
       targetZips: fiberWhitespaceZips,
       evidence: fiberWhitespaceZips.slice(0, 6).map((z) => `${z}: 0 fiber competitors on record`),
       priority: 'high'
@@ -173,7 +173,7 @@ export function generateOpportunities(args: {
       solution: findSolution('smart-town'),
       rationaleHeadline: 'Footprint includes communities large enough to benefit from a civic partnership.',
       rationaleDetail:
-        'Community-scale ZIPs are good candidates for a SmartTown program that bundles community WiFi, public-safety connectivity, and digital-equity grants alongside your network.',
+        'Community-scale ZIPs are good candidates for a CommunityConnect program that bundles community WiFi, public-safety connectivity, and digital-equity grants alongside your network.',
       targetZips: civicZips,
       evidence: civicZips.slice(0, 4).map((z) => `${z}: ${(housingByZip.get(z) ?? 0).toLocaleString()} housing units`),
       priority: 'low'

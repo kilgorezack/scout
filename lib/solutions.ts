@@ -8,37 +8,37 @@ export type Solution = {
 export const SOLUTIONS: Solution[] = [
   {
     id: 'smart-home',
-    name: 'SmartHome',
+    name: 'HomeConnect',
     blurb: 'Whole-home WiFi experience with managed network security for residential subscribers.',
     audience: 'residential'
   },
   {
     id: 'smart-town',
-    name: 'SmartTown',
+    name: 'CommunityConnect',
     blurb: 'Municipal and community broadband enablement — bring connected services to civic partners.',
     audience: 'municipal'
   },
   {
     id: 'smart-mdu',
-    name: 'SmartMDU',
+    name: 'PropertyConnect',
     blurb: 'Multi-dwelling unit managed connectivity — turn apartments and condos into a managed footprint.',
     audience: 'mdu'
   },
   {
     id: 'home-office',
-    name: 'Home OfficeIQ',
+    name: 'HomeOffice Pro',
     blurb: 'Premium work-from-home tier with prioritized bandwidth and SLA-style support.',
     audience: 'residential'
   },
   {
     id: 'smart-biz',
-    name: 'SmartBiz',
+    name: 'BusinessConnect',
     blurb: 'Managed connectivity and WiFi for small business with simple self-serve tools.',
     audience: 'smb'
   },
   {
     id: 'smart-biz-mobile',
-    name: 'SmartBiz Mobile',
+    name: 'BusinessConnect Mobile',
     blurb: 'Converged fixed + mobile bundle for SMB — answer cable MSO mobile bundling head-on.',
     audience: 'smb'
   }
