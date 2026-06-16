@@ -66,6 +66,24 @@ create table reports (
 Until these tables are populated, Scout ships with:
 
 - A deterministic stub provider catalog driving overlap, tech mix, and max speeds per ZIP
-- 0-star / 0-review placeholders for Google reviews
 - A mock competitor news feed driving the Opportunities engine
 - A live Census ACS lookup for demographics (falls back to stub on error)
+
+## Provider reviews (Google star ratings)
+
+Real Google review ratings come from a baked snapshot at `lib/provider-reviews.json`
+— a per-provider, review-count-weighted rollup of the Supabase `provider_reviews`
+table (~2,100 providers). `lib/reviews.ts` reads this snapshot at runtime and matches
+the site's catalog names to review brands via `lib/provider-aliases.ts` (e.g.
+"Comcast Xfinity" → "Xfinity", "Verizon Fios" → "Verizon"). Providers with no review
+match fall back to a 0-star placeholder.
+
+The snapshot is committed so the app needs no DB access or RLS changes to show ratings.
+Regenerate it when the source data changes:
+
+```bash
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/build-reviews-index.mjs
+```
+
+(The service-role key is used at build time only — `provider_reviews` keeps RLS on
+with no anon read policy, so only the aggregate snapshot is ever shipped.)
