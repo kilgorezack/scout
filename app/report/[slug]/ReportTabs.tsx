@@ -6,7 +6,6 @@ import type { ReportPayload } from '@/lib/report';
 import OverviewTab from './tabs/OverviewTab';
 import CompetitorsTab from './tabs/CompetitorsTab';
 import ComparisonTab from './tabs/ComparisonTab';
-import CoverageTab from './tabs/CoverageTab';
 import DemographicsTab from './tabs/DemographicsTab';
 import OpportunitiesTab from './tabs/OpportunitiesTab';
 import NewsTab from './tabs/NewsTab';
@@ -17,7 +16,6 @@ const TABS = [
   { id: 'opportunities', label: 'Opportunities' },
   { id: 'competitors', label: 'Competitors' },
   { id: 'comparison', label: 'Comparison' },
-  { id: 'coverage', label: 'Coverage' },
   { id: 'demographics', label: 'Demographics' },
   { id: 'news', label: 'Launch radar' },
   { id: 'ai', label: 'AI readiness' }
@@ -49,7 +47,6 @@ export default function ReportTabs({ report }: { report: ReportPayload }) {
         {active === 'opportunities' && <OpportunitiesTab report={report} />}
         {active === 'competitors' && <CompetitorsTab report={report} />}
         {active === 'comparison' && <ComparisonTab report={report} />}
-        {active === 'coverage' && <CoverageTab report={report} />}
         {active === 'demographics' && <DemographicsTab report={report} />}
         {active === 'news' && <NewsTab report={report} />}
         {active === 'ai' && <AIReadinessTab />}
