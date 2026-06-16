@@ -1,0 +1,37 @@
+{
+  "name": "signal",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:data": "node scripts/build-data.js",
+    "build:data:uk": "node scripts/build-data-uk.js",
+    "build:data:ca": "node scripts/build-data-ca.js",
+    "build:data:za": "node scripts/build-data-za.js",
+    "build:data:all": "node scripts/build-data.js && node scripts/build-data-uk.js && node scripts/build-data-ca.js && node scripts/build-data-za.js",
+    "build": "npm run build:data:all && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "proj4": "^2.20.8",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "recharts": "^3.8.1",
+    "shapefile": "^0.6.6",
+    "simplify-js": "^1.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "vite": "^8.0.1"
+  }
+}

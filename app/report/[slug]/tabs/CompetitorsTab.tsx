@@ -1,6 +1,10 @@
-import { Star } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { Sparkles, Star } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 import type { ReportPayload } from '@/lib/report';
+import DeepResearchDrawer from '@/components/DeepResearchDrawer';
 
 const TECH_COLOR: Record<string, string> = {
   Fiber: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -54,6 +58,35 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
       </div>
     );
   }
+  return <CompetitorsList report={report} />;
+}
+
+function CompetitorsList({ report }: { report: ReportPayload }) {
+  const [openName, setOpenName] = useState<string | null>(null);
+  const opened = report.competitors.find((c) => c.providerName === openName);
+
+  // Pull news headlines for the opened competitor to feed to Gemini as context.
+  const openedHeadlines = opened
+    ? report.news
+        .filter((n) => n.providerName === opened.providerName)
+        .slice(0, 8)
+        .map((n) => `${n.title} (${n.publishedAt})`)
+    : [];
+
+  // Footprint coverage denominator. `locationsServed` is proportional to the
+  // area a provider covers (in the live BDC path it's the count of map hexes
+  // it serves inside the ZIP × 15). The broadest provider in each ZIP — a
+  // satellite or incumbent that passes ~every location — approximates the
+  // total serviceable base there, so we take the max served per ZIP and sum
+  // across the whole footprint. A provider's coverage % is then its served
+  // locations over that total: satellite/nationwide players land at ~100%,
+  // FWA high, a regional overbuilder low.
+  const maxLocationsByZip = new Map<string, number>();
+  for (const r of report.providersByZip) {
+    maxLocationsByZip.set(r.zip, Math.max(maxLocationsByZip.get(r.zip) ?? 0, r.locationsServed));
+  }
+  const serviceableLocations = report.zips.reduce((sum, z) => sum + (maxLocationsByZip.get(z) ?? 0), 0);
+
   return (
     <>
       <div className="mb-7">
@@ -61,18 +94,29 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
         <h2 className="display mt-2 text-4xl text-ink-900">
           <span className="gradient-text">{report.competitors.length}</span> providers in your footprint
         </h2>
+        <p className="mt-2 text-sm text-ink-500">
+          Tap <span className="font-medium text-ink-700">Deep dive</span> on any card to generate a live Gemini-powered competitive briefing.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {report.competitors.map((c) => {
           const review = report.reviews[c.providerName];
+          // Coverage of your footprint: this provider's served locations as a
+          // share of the total serviceable locations across your ZIPs. Bounded
+          // 0–100% by construction (a provider can't serve more than the max in
+          // any ZIP), and meaningful even on single-ZIP reports.
+          const coveragePct = serviceableLocations > 0
+            ? Math.min(100, Math.round((c.totalLocations / serviceableLocations) * 100))
+            : 0;
           return (
             <div key={c.providerName} className="panel p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="truncate text-[16px] font-semibold leading-snug text-ink-900">{c.providerName}</h3>
                   <p className="mt-1 text-xs text-ink-500">
-                    Overlap in <span className="font-mono text-ink-800">{c.zips.length}</span> of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}
+                    <span className="font-mono text-ink-800">{coveragePct}%</span> footprint coverage
+                    <span className="text-ink-400"> · present in {c.zips.length} of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}</span>
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-0.5">
@@ -116,10 +160,29 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
                   <dd className="text-[10px] text-ink-500">served</dd>
                 </div>
               </dl>
+
+              <button
+                type="button"
+                onClick={() => setOpenName(c.providerName)}
+                className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-fuchsia-200 bg-gradient-to-r from-pink-50 via-fuchsia-50 to-blue-50 px-3 py-1.5 text-[13px] font-medium text-fuchsia-700 transition hover:from-pink-100 hover:via-fuchsia-100 hover:to-blue-100"
+              >
+                <Sparkles size={13} />
+                Deep dive
+              </button>
             </div>
           );
         })}
       </div>
+
+      <DeepResearchDrawer
+        open={Boolean(opened)}
+        onClose={() => setOpenName(null)}
+        competitorName={opened?.providerName ?? ''}
+        ownCompany={report.companyName}
+        zips={report.zips}
+        technologies={opened?.technologies}
+        recentHeadlines={openedHeadlines}
+      />
     </>
   );
 }

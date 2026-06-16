@@ -51,7 +51,13 @@ export async function demographicsForZips(zips: string[]): Promise<ZipDemographi
     url.searchParams.set('for', `zip code tabulation area:${zips.join(',')}`);
     if (key) url.searchParams.set('key', key);
 
-    const res = await fetch(url.toString(), { next: { revalidate: 60 * 60 * 24 } });
+    // Hard timeout — a hanging Census call must not stall the whole report
+    // build past the function's maxDuration (which surfaces as "Connection
+    // closed"). On timeout the AbortError lands in the catch below.
+    const res = await fetch(url.toString(), {
+      next: { revalidate: 60 * 60 * 24 },
+      signal: AbortSignal.timeout(8000)
+    });
     if (!res.ok) throw new Error(`Census ${res.status}`);
     const json = (await res.json()) as string[][];
     const [header, ...rows] = json;

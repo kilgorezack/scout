@@ -30,6 +30,9 @@ export default function HomePage() {
             <Link href="/analyze" className="btn-primary text-[15px]">
               Run a market analysis <ArrowRight size={16} />
             </Link>
+            <Link href="/research" className="btn-ghost text-[15px]">
+              Research a competitor
+            </Link>
             <Link href="/ai-readiness" className="btn-ghost text-[15px]">
               Score my website
             </Link>
@@ -74,7 +77,7 @@ export default function HomePage() {
             Ranked moves for your <span className="bg-gradient-to-r from-pink-300 via-fuchsia-300 to-blue-300 bg-clip-text text-transparent">next launch.</span>
           </>
         }
-        body="Whitespace, counter-launches, civic plays — each tied to evidence from your ZIPs. SmartHome, SmartTown, SmartMDU, Home OfficeIQ, SmartBiz."
+        body="Whitespace, counter-launches, civic plays — each tied to evidence from your ZIPs. HomeConnect, CommunityConnect, PropertyConnect, HomeOffice Pro, BusinessConnect."
         icon={Sparkles}
         visual={<OpportunitiesVisual />}
       />
@@ -238,7 +241,7 @@ function HeroPreview() {
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">Top opportunity</span>
           </div>
           <p className="mt-2 text-sm text-white">
-            <span className="font-semibold">SmartHome</span> counter-launch — competitors are racing to managed in-home WiFi across all 5 ZIPs.
+            <span className="font-semibold">HomeConnect</span> counter-launch — competitors are racing to managed in-home WiFi across all 5 ZIPs.
           </p>
         </div>
       </div>
@@ -290,10 +293,10 @@ function OverlapVisual() {
 
 function OpportunitiesVisual() {
   const items = [
-    { name: 'SmartHome', tag: 'Counter-launch', priority: 'high' },
-    { name: 'Home OfficeIQ', tag: 'Premium tier', priority: 'high' },
-    { name: 'SmartBiz Mobile', tag: 'Convergence', priority: 'medium' },
-    { name: 'SmartMDU', tag: 'Density play', priority: 'low' }
+    { name: 'HomeConnect', tag: 'Counter-launch', priority: 'high' },
+    { name: 'HomeOffice Pro', tag: 'Premium tier', priority: 'high' },
+    { name: 'BusinessConnect Mobile', tag: 'Convergence', priority: 'medium' },
+    { name: 'PropertyConnect', tag: 'Density play', priority: 'low' }
   ];
   return (
     <div className="relative">
