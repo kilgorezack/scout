@@ -75,11 +75,21 @@ export default function CompetitorsTab({ report }: { report: ReportPayload }) {
                     Overlap in <span className="font-mono text-ink-800">{c.zips.length}</span> of {report.zips.length} ZIP{report.zips.length === 1 ? '' : 's'}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-bg-subtle px-2.5 py-1 text-[11px] font-medium text-ink-700">
-                  <Star size={11} className="fill-amber-400 stroke-amber-500" />
-                  <span>{(review?.stars ?? 0).toFixed(1)}</span>
-                  <span className="text-ink-300">·</span>
-                  <span className="font-mono text-ink-600">{formatNumber(review?.reviewCount ?? 0)}</span>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <div className="flex items-center gap-1 rounded-full border border-ink-200 bg-bg-subtle px-2.5 py-1 text-[11px] font-medium text-ink-700">
+                    <Star size={11} className="fill-amber-400 stroke-amber-500" />
+                    <span>{(review?.stars ?? 0).toFixed(1)}</span>
+                    <span className="text-ink-300">·</span>
+                    <span className="font-mono text-ink-600">{formatNumber(review?.reviewCount ?? 0)}</span>
+                  </div>
+                  {review?.scope === 'footprint' && (
+                    <span className="text-[9px] uppercase tracking-[0.14em] text-emerald-600">
+                      in-footprint · {review.nationalStars.toFixed(1)}★ natl
+                    </span>
+                  )}
+                  {review?.scope === 'national' && (
+                    <span className="text-[9px] uppercase tracking-[0.14em] text-ink-400">nationwide</span>
+                  )}
                 </div>
               </div>
 

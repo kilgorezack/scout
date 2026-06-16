@@ -1,6 +1,13 @@
-import { Lightbulb, MapPin, Users, Building2, type LucideIcon } from 'lucide-react';
+import { Lightbulb, MapPin, Users, Building2, Star, type LucideIcon } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import type { ReportPayload } from '@/lib/report';
+
+function ratedCompetitors(report: ReportPayload) {
+  return report.competitors
+    .map((c) => ({ name: c.providerName, review: report.reviews[c.providerName] }))
+    .filter((x) => x.review && x.review.scope !== 'none' && x.review.reviewCount >= 300 && x.review.stars > 0)
+    .sort((a, b) => a.review!.stars - b.review!.stars);
+}
 
 export default function OverviewTab({ report }: { report: ReportPayload }) {
   const totalLocations = report.competitors.reduce((s, c) => s + c.totalLocations, 0);
@@ -13,6 +20,11 @@ export default function OverviewTab({ report }: { report: ReportPayload }) {
   const techCounts = new Map<string, number>();
   for (const c of report.competitors) for (const t of c.technologies) techCounts.set(t, (techCounts.get(t) ?? 0) + 1);
   const techMix = Array.from(techCounts.entries()).sort((a, b) => b[1] - a[1]);
+
+  const rated = ratedCompetitors(report);
+  const worst = rated[0];
+  const best = rated[rated.length - 1];
+  const own = report.ownReview;
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -30,6 +42,33 @@ export default function OverviewTab({ report }: { report: ReportPayload }) {
             </div>
           ))}
         </div>
+
+        {rated.length > 0 && (
+          <div className="mt-7 border-t border-ink-100 pt-5">
+            <div className="flex items-center gap-2 text-ink-500">
+              <Star size={13} className="fill-amber-400 stroke-amber-500" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">Competitor reputation</span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {worst && (
+                <ReputationCard label="Weakest rated" tone="weak" name={worst.name} review={worst.review!} />
+              )}
+              {best && best !== worst && (
+                <ReputationCard label="Strongest rated" tone="strong" name={best.name} review={best.review!} />
+              )}
+              {own && (
+                <ReputationCard label={`${report.companyName ?? 'You'} (you)`} tone="own" name={report.companyName ?? 'You'} review={own} />
+              )}
+            </div>
+            {own && best && (
+              <p className="mt-3 text-xs text-ink-600">
+                {own.stars >= best.review!.stars
+                  ? `You out-rate every competitor in this footprint (${own.stars.toFixed(1)}★) — lead with reliability and service quality.`
+                  : `Your ${own.stars.toFixed(1)}★ trails the top-rated competitor (${best.name}, ${best.review!.stars.toFixed(1)}★) — there's a reputation gap to close.`}
+              </p>
+            )}
+          </div>
+        )}
 
         {top && (
           <div className="mt-7 overflow-hidden rounded-2xl border border-ink-100 bg-gradient-to-br from-pink-50 via-fuchsia-50 to-blue-50 p-6">
@@ -63,6 +102,39 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
         <span className="text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
       </div>
       <div className="display mt-2 text-3xl leading-none text-ink-900">{value}</div>
+    </div>
+  );
+}
+
+function ReputationCard({
+  label,
+  tone,
+  name,
+  review
+}: {
+  label: string;
+  tone: 'weak' | 'strong' | 'own';
+  name: string;
+  review: { stars: number; reviewCount: number; scope: string };
+}) {
+  const toneStyle =
+    tone === 'weak'
+      ? 'border-rose-200 bg-rose-50'
+      : tone === 'strong'
+        ? 'border-emerald-200 bg-emerald-50'
+        : 'border-accent-200 bg-accent-50';
+  return (
+    <div className={`rounded-2xl border ${toneStyle} px-4 py-3`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-500">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-ink-900">{name}</div>
+      <div className="mt-1 flex items-baseline gap-1">
+        <span className="display text-2xl leading-none text-ink-900">{review.stars.toFixed(1)}</span>
+        <span className="text-amber-500">★</span>
+        <span className="ml-1 font-mono text-[11px] text-ink-500">{formatNumber(review.reviewCount)}</span>
+      </div>
+      <div className="text-[9px] uppercase tracking-[0.14em] text-ink-400">
+        {review.scope === 'footprint' ? 'in-footprint reviews' : 'nationwide reviews'}
+      </div>
     </div>
   );
 }

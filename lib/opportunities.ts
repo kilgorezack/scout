@@ -1,6 +1,7 @@
 import type { ProviderInZip } from './bdc';
 import type { ZipDemographics } from './census';
 import type { CompetitorNews } from './news';
+import type { ProviderReview } from './reviews';
 import { SOLUTIONS, type Solution } from './solutions';
 
 export type Opportunity = {
@@ -31,12 +32,52 @@ export function generateOpportunities(args: {
   demographics: ZipDemographics[];
   news: CompetitorNews[];
   ownCompany: string | null;
+  reviews?: Record<string, ProviderReview>;
 }): Opportunity[] {
   const { providersByZip, demographics, news } = args;
+  const reviews = args.reviews ?? {};
   const ownCompany = (args.ownCompany ?? '').trim().toLowerCase();
   const opportunities: Opportunity[] = [];
 
   const zips = Array.from(new Set(providersByZip.map((p) => p.zip)));
+
+  // Reputation gap: incumbents with weak Google ratings (and enough reviews to
+  // be meaningful) are prime displacement targets. We lead with a SmartHome
+  // experience pitch aimed at winning their dissatisfied subscribers.
+  const zipsByProvider = new Map<string, Set<string>>();
+  for (const p of providersByZip) {
+    if (ownCompany && p.providerName.toLowerCase().includes(ownCompany)) continue;
+    const set = zipsByProvider.get(p.providerName) ?? new Set<string>();
+    set.add(p.zip);
+    zipsByProvider.set(p.providerName, set);
+  }
+  const weakIncumbents = Array.from(zipsByProvider.keys())
+    .map((name) => ({ name, review: reviews[name] }))
+    .filter((x) => x.review && x.review.scope !== 'none' && x.review.reviewCount >= 300 && x.review.stars > 0 && x.review.stars <= 3.2)
+    .sort((a, b) => a.review!.stars - b.review!.stars);
+
+  if (weakIncumbents.length > 0) {
+    const targetZips = Array.from(
+      new Set(weakIncumbents.flatMap((x) => Array.from(zipsByProvider.get(x.name) ?? [])))
+    );
+    const worst = weakIncumbents[0].review!;
+    opportunities.push({
+      id: 'reputation-gap',
+      solution: findSolution('smart-home'),
+      rationaleHeadline: `Incumbents are bleeding goodwill — ${weakIncumbents[0].name} sits at just ${worst.stars.toFixed(1)}★.`,
+      rationaleDetail:
+        'Several competitors in this footprint carry weak Google ratings, signaling churnable, dissatisfied subscribers. A SmartHome experience tier — reliable whole-home WiFi with proactive support — is a direct switch-and-save pitch against a low-rated incumbent.',
+      targetZips,
+      evidence: weakIncumbents
+        .slice(0, 5)
+        .map((x) => {
+          const r = x.review!;
+          const scope = r.scope === 'footprint' ? 'in-footprint' : 'nationwide';
+          return `${x.name}: ${r.stars.toFixed(1)}★ across ${r.reviewCount.toLocaleString()} ${scope} Google reviews`;
+        }),
+      priority: worst.stars <= 2.5 ? 'high' : 'medium'
+    });
+  }
 
   const smartHomeNews = news.filter((n) => n.category === 'smart_home');
   if (smartHomeNews.length > 0) {

@@ -25,11 +25,20 @@ const supabase = createClient(url, key, { auth: { persistSession: false } });
 
 const PAGE = 1000;
 const agg = new Map(); // provider -> { scoreXcount, count, locations }
+const stateAgg = new Map(); // `provider|STATE` -> { scoreXcount, count, locations }
+
+function bump(map, key, score, count) {
+  const cur = map.get(key) || { scoreXcount: 0, count: 0, locations: 0 };
+  cur.scoreXcount += score * count;
+  cur.count += count;
+  cur.locations += 1;
+  map.set(key, cur);
+}
 
 for (let from = 0; ; from += PAGE) {
   const { data, error } = await supabase
     .from('provider_reviews')
-    .select('provider, review_score, review_count')
+    .select('provider, state, review_score, review_count')
     .not('provider', 'is', null)
     .not('review_score', 'is', null)
     .range(from, from + PAGE - 1);
@@ -43,11 +52,8 @@ for (let from = 0; ; from += PAGE) {
   for (const r of data) {
     const count = Number(r.review_count) || 0;
     const score = Number(r.review_score) || 0;
-    const cur = agg.get(r.provider) || { scoreXcount: 0, count: 0, locations: 0 };
-    cur.scoreXcount += score * count;
-    cur.count += count;
-    cur.locations += 1;
-    agg.set(r.provider, cur);
+    bump(agg, r.provider, score, count);
+    if (r.state) bump(stateAgg, `${r.provider}|${String(r.state).toUpperCase()}`, score, count);
   }
   console.error(`fetched ${from + data.length} rows…`);
   if (data.length < PAGE) break;
@@ -55,18 +61,28 @@ for (let from = 0; ; from += PAGE) {
 
 const providers = [...agg.entries()]
   .filter(([, v]) => v.count > 0)
-  .map(([provider, v]) => [
-    provider,
-    Math.round((v.scoreXcount / v.count) * 100) / 100,
-    v.count,
-    v.locations
-  ])
+  .map(([provider, v]) => [provider, Math.round((v.scoreXcount / v.count) * 100) / 100, v.count, v.locations])
   .sort((a, b) => b[2] - a[2]);
 
-const out = {
-  note: 'Snapshot rollup of public.provider_reviews: [provider, weightedStars, totalReviews, locationCount]. Weighted by review_count. Regenerate with scripts/build-reviews-index.mjs.',
-  providers
-};
+const rows = [...stateAgg.entries()]
+  .filter(([, v]) => v.count > 0)
+  .map(([k, v]) => {
+    const i = k.lastIndexOf('|');
+    return [k.slice(0, i), k.slice(i + 1), Math.round((v.scoreXcount / v.count) * 100) / 100, v.count, v.locations];
+  });
 
-writeFileSync(new URL('../lib/provider-reviews.json', import.meta.url), JSON.stringify(out));
-console.error(`Wrote lib/provider-reviews.json with ${providers.length} providers.`);
+writeFileSync(
+  new URL('../lib/provider-reviews.json', import.meta.url),
+  JSON.stringify({
+    note: 'Snapshot rollup of public.provider_reviews: [provider, weightedStars, totalReviews, locationCount]. Weighted by review_count. Regenerate with scripts/build-reviews-index.mjs.',
+    providers
+  })
+);
+writeFileSync(
+  new URL('../lib/provider-reviews-by-state.json', import.meta.url),
+  JSON.stringify({
+    note: 'Per provider-state rollup of public.provider_reviews: [provider, state, weightedStars, totalReviews, locationCount]. Regenerate with scripts/build-reviews-index.mjs.',
+    rows
+  })
+);
+console.error(`Wrote lib/provider-reviews.json (${providers.length} providers) and lib/provider-reviews-by-state.json (${rows.length} provider-state rows).`);

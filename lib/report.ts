@@ -1,8 +1,9 @@
 import { providersForZipsWithSource, summarizeByProvider, type ProviderInZip, type ProvidersResult } from './bdc';
-import { reviewsForProviders, type ProviderReview } from './reviews';
+import { reviewsForProviders, reviewForProvider, type ProviderReview } from './reviews';
 import { newsForProviders, type CompetitorNews } from './news';
 import { demographicsForZips, type ZipDemographics } from './census';
 import { generateOpportunities, type Opportunity } from './opportunities';
+import { zipToState } from './zip-state';
 import { getSupabase } from './supabase';
 
 export type ReportInput = {
@@ -16,6 +17,8 @@ export type ReportPayload = ReportInput & {
   providersByZip: ProviderInZip[];
   competitors: ReturnType<typeof summarizeByProvider>;
   reviews: Record<string, ProviderReview>;
+  ownReview: ProviderReview | null;
+  footprintStates: string[];
   news: CompetitorNews[];
   demographics: ZipDemographics[];
   opportunities: Opportunity[];
@@ -80,8 +83,16 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   const competitors = summarizeByProvider(filtered);
   const providerNames = competitors.map((c) => c.providerName);
 
-  const [reviewsMap, news, demographics] = await Promise.all([
-    reviewsForProviders(providerNames).catch(() => new Map()),
+  // Footprint states drive locally-scoped Google ratings.
+  const footprintStates = Array.from(
+    new Set(input.zips.map((z) => zipToState(z)).filter((s): s is string => Boolean(s)))
+  );
+
+  const [reviewsMap, ownReview, news, demographics] = await Promise.all([
+    reviewsForProviders(providerNames, footprintStates).catch(() => new Map()),
+    (input.companyName ? reviewForProvider(input.companyName, footprintStates) : Promise.resolve(null)).catch(
+      () => null
+    ),
     newsForProviders(providerNames).catch(() => []),
     demographicsForZips(input.zips).catch(() => input.zips.map((z) => ({
       zip: z,
@@ -103,7 +114,8 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
       providersByZip: filtered,
       demographics,
       news,
-      ownCompany: input.companyName
+      ownCompany: input.companyName,
+      reviews
     });
   } catch {
     opportunities = [];
@@ -114,6 +126,8 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
     providersByZip: filtered,
     competitors,
     reviews,
+    ownReview,
+    footprintStates,
     news,
     demographics,
     opportunities,
