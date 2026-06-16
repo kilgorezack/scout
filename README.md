@@ -87,3 +87,22 @@ SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/build-reviews-index.
 
 (The service-role key is used at build time only — `provider_reviews` keeps RLS on
 with no anon read policy, so only the aggregate snapshot is ever shipped.)
+
+## Competitor pricing (Pricing tab)
+
+The Pricing tab is driven by two baked snapshots rolled up from the Supabase
+`plans` / `speed_tiers` / `plan_versions` tables:
+
+- `lib/provider-pricing.json` — per-provider median price by speed tier, 1-Gig
+  benchmark price, and median $/Mbps (sane filter: $20–500, 10–10,000 Mbps).
+- `lib/provider-price-changes.json` — real plan price changes from
+  `plan_versions` (old → new price with date).
+
+`lib/pricing.ts` matches these to the footprint's competitors using the same
+`provider-aliases` canonical-name logic as reviews. The tab shows a price ladder
+by speed tier, a price-vs-satisfaction positioning plot (pricing × Google
+ratings), and recent competitor price moves. Regenerate with:
+
+```bash
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/build-pricing-index.mjs
+```

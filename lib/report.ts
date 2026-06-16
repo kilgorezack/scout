@@ -1,5 +1,12 @@
 import { providersForZipsWithSource, summarizeByProvider, type ProviderInZip, type ProvidersResult } from './bdc';
 import { reviewsForProviders, reviewForProvider, type ProviderReview } from './reviews';
+import {
+  pricingForProviders,
+  pricingForProvider,
+  priceChangesForProviders,
+  type ProviderPricing,
+  type PriceChange
+} from './pricing';
 import { newsForProviders, type CompetitorNews } from './news';
 import { demographicsForZips, type ZipDemographics } from './census';
 import { generateOpportunities, type Opportunity } from './opportunities';
@@ -18,6 +25,9 @@ export type ReportPayload = ReportInput & {
   competitors: ReturnType<typeof summarizeByProvider>;
   reviews: Record<string, ProviderReview>;
   ownReview: ProviderReview | null;
+  pricing: Record<string, ProviderPricing>;
+  ownPricing: ProviderPricing | null;
+  priceChanges: PriceChange[];
   footprintStates: string[];
   news: CompetitorNews[];
   demographics: ZipDemographics[];
@@ -132,6 +142,13 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   const reviews: Record<string, ProviderReview> = {};
   for (const [k, v] of reviewsMap.entries()) reviews[k] = v;
 
+  // Pricing is a baked national snapshot (no network), matched to the
+  // footprint's competitors by the same canonical-name logic as reviews.
+  const pricing: Record<string, ProviderPricing> = {};
+  for (const [k, v] of pricingForProviders(providerNames).entries()) pricing[k] = v;
+  const ownPricing = input.companyName ? pricingForProvider(input.companyName) : null;
+  const priceChanges = priceChangesForProviders(providerNames, 12);
+
   let opportunities: Opportunity[] = [];
   try {
     opportunities = generateOpportunities({
@@ -151,6 +168,9 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
     competitors,
     reviews,
     ownReview,
+    pricing,
+    ownPricing,
+    priceChanges,
     footprintStates,
     news,
     demographics,
