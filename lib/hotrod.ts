@@ -297,7 +297,10 @@ export async function hotrodProvidersForZips(
         technologies: [TECH_LABEL[hit.tech] ?? 'Fiber'],
         maxDownMbps: speeds.down,
         maxUpMbps: speeds.up,
-        locationsServed: count * 15
+        // Fallback estimate; report.ts refines this to Census housing × the
+        // provider's coverage fraction of the ZIP when demographics resolve.
+        locationsServed: count * 15,
+        coverageHexes: count
       });
     }
   }

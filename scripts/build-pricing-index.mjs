@@ -46,15 +46,28 @@ function bucket(down) {
 }
 
 const providers = new Map((await fetchAll('providers', 'id,name')).map((p) => [p.id, p.name]));
-const speeds = new Map((await fetchAll('speed_tiers', 'id,download_mbps')).map((s) => [s.id, s.download_mbps]));
+const speedTiers = await fetchAll('speed_tiers', 'id,download_mbps,upload_mbps');
+const speeds = new Map(speedTiers.map((s) => [s.id, s.download_mbps]));
+const speedsUp = new Map(speedTiers.map((s) => [s.id, s.upload_mbps]));
 const plans = await fetchAll('plans', 'provider_id,speed_tier_id,price_usd');
 
-// Per-provider summary + tiers.
+// Per-provider summary + tiers, plus real max residential speed.
 const byProv = new Map();
+const speedByProv = new Map(); // provider -> { down, up }
 for (const p of plans) {
   const name = providers.get(p.provider_id);
   const down = speeds.get(p.speed_tier_id);
+  const up = speedsUp.get(p.speed_tier_id);
   const price = p.price_usd;
+
+  // Max residential speed: any priced ($20–500) plan within 1–10,000 Mbps.
+  if (name && down != null && price != null && price >= 20 && price <= 500 && down >= 1 && down <= 10000) {
+    const s = speedByProv.get(name) ?? { down: 0, up: 0 };
+    s.down = Math.max(s.down, down);
+    s.up = Math.max(s.up, up ?? 0);
+    speedByProv.set(name, s);
+  }
+
   if (!name || down == null || price == null || !sane(price, down)) continue;
   let a = byProv.get(name);
   if (!a) { a = { prices: [], ppm: [], gig: [], tiers: new Map() }; byProv.set(name, a); }
@@ -111,4 +124,9 @@ writeFileSync(
   new URL('../lib/provider-price-changes.json', import.meta.url),
   JSON.stringify({ note: 'Plan price changes from plan_versions: [provider,planName,downMbps,oldPrice,newPrice,changedAt].', changes: changes.slice(0, 4000) })
 );
-console.error(`Wrote ${summary.length} providers, ${tiers.length} tier rows, ${changes.length} price changes.`);
+const speedRows = [...speedByProv.entries()].map(([name, s]) => [name, s.down, s.up]);
+writeFileSync(
+  new URL('../lib/provider-speeds.json', import.meta.url),
+  JSON.stringify({ note: 'Max residential speed per provider from plans ($20-500): [provider, maxDownMbps, maxUpMbps].', speeds: speedRows })
+);
+console.error(`Wrote ${summary.length} providers, ${tiers.length} tier rows, ${changes.length} price changes, ${speedRows.length} speed rows.`);

@@ -7,6 +7,7 @@ import {
   type ProviderPricing,
   type PriceChange
 } from './pricing';
+import { maxSpeedForProvider } from './speeds';
 import { newsForProviders, type CompetitorNews } from './news';
 import { demographicsForZips, type ZipDemographics } from './census';
 import { generateOpportunities, type Opportunity } from './opportunities';
@@ -111,8 +112,9 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
     ? providersByZip.filter((p) => !p.providerName.toLowerCase().includes(ownLower))
     : providersByZip;
 
-  const competitors = summarizeByProvider(filtered);
-  const providerNames = competitors.map((c) => c.providerName);
+  // Distinct competitor names — enough to fetch reviews/news/pricing without
+  // needing the (locations-dependent) summary yet.
+  const providerNames = Array.from(new Set(filtered.map((p) => p.providerName)));
 
   // Footprint states drive locally-scoped Google ratings.
   const footprintStates = Array.from(
@@ -138,6 +140,33 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
     withTimeout(newsForProviders(providerNames), 8_000, []).catch(() => []),
     withTimeout(demographicsForZips(input.zips), 10_000, zeroDemographics).catch(() => zeroDemographics)
   ]);
+
+  // Estimate premises served from real Census housing × the provider's coverage
+  // fraction of each ZIP (Hotrod path), replacing the crude hex-count heuristic.
+  if (providersResult.source === 'hotrod') {
+    const housingByZip = new Map(demographics.map((d) => [d.zip, d.housingUnits]));
+    const zipTotalHexes = providersResult.hotrod?.zipsResolved ?? {};
+    for (const r of filtered) {
+      const total = zipTotalHexes[r.zip] ?? 0;
+      const housing = housingByZip.get(r.zip) ?? 0;
+      const cov = r.coverageHexes ?? 0;
+      if (total > 0 && housing > 0 && cov > 0) {
+        r.locationsServed = Math.round(housing * Math.min(1, cov / total));
+      }
+    }
+  }
+
+  const competitors = summarizeByProvider(filtered);
+
+  // Override technology-default speeds with each provider's real max
+  // residential speed from the Supabase plans snapshot when we have it.
+  for (const c of competitors) {
+    const sp = maxSpeedForProvider(c.providerName);
+    if (sp) {
+      c.maxDownMbps = sp.down;
+      c.maxUpMbps = sp.up;
+    }
+  }
 
   const reviews: Record<string, ProviderReview> = {};
   for (const [k, v] of reviewsMap.entries()) reviews[k] = v;

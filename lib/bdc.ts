@@ -10,6 +10,9 @@ export type ProviderInZip = {
   maxDownMbps: number;
   maxUpMbps: number;
   locationsServed: number;
+  // Number of the ZIP's H3 hexes this provider covers (Hotrod path only).
+  // Used with the ZIP's total hex count + Census housing to estimate premises.
+  coverageHexes?: number;
 };
 
 // Collapse multiple rows for the same (zip, provider) — e.g. a provider with
@@ -27,6 +30,7 @@ function mergeRows(rows: ProviderInZip[]): ProviderInZip[] {
       existing.maxDownMbps = Math.max(existing.maxDownMbps, r.maxDownMbps);
       existing.maxUpMbps = Math.max(existing.maxUpMbps, r.maxUpMbps);
       existing.locationsServed = Math.max(existing.locationsServed, r.locationsServed);
+      existing.coverageHexes = Math.max(existing.coverageHexes ?? 0, r.coverageHexes ?? 0);
     } else {
       merged.set(key, { ...r, technologies: [...r.technologies] });
     }
