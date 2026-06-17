@@ -12,6 +12,8 @@ export default function DemographicsTab({ report }: { report: ReportPayload }) {
     { population: 0, households: 0, housingUnits: 0, businesses: 0 }
   );
 
+  const unavailable = totals.population === 0 && totals.households === 0 && totals.housingUnits === 0;
+
   return (
     <>
       <div className="mb-7">
@@ -20,6 +22,14 @@ export default function DemographicsTab({ report }: { report: ReportPayload }) {
           The audience you&apos;re <span className="gradient-text">actually selling to.</span>
         </h2>
       </div>
+
+      {unavailable && (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Census demographics are unavailable for this report. The U.S. Census API now requires a
+          free API key — set <span className="font-mono">CENSUS_API_KEY</span> in the environment to
+          populate these figures. (We show nothing rather than estimated numbers.)
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Population" value={formatNumber(totals.population)} />

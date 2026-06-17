@@ -36,7 +36,7 @@ async function establishmentsForZip(zip: string, key?: string): Promise<number> 
       next: { revalidate: 60 * 60 * 24 * 30 },
       signal: AbortSignal.timeout(6000)
     });
-    if (!res.ok) return 0;
+    if (!res.ok || !res.headers.get('content-type')?.includes('json')) return 0;
     const json = (await res.json()) as string[][];
     const [header, ...rows] = json;
     const n = Number(rows[0]?.[header.indexOf('ESTAB')]);
@@ -72,6 +72,11 @@ export async function demographicsForZips(zips: string[]): Promise<ZipDemographi
       signal: AbortSignal.timeout(8000)
     });
     if (!res.ok) throw new Error(`Census ${res.status}`);
+    // The Census API answers a keyless/invalid-key request with an HTML
+    // "Missing Key" page under a 200, so guard against non-JSON before parsing.
+    if (!res.headers.get('content-type')?.includes('json')) {
+      throw new Error('Census API returned a non-JSON response (missing/invalid CENSUS_API_KEY?)');
+    }
     const json = (await res.json()) as string[][];
     const [header, ...rows] = json;
     const idx = (col: string) => header.indexOf(col);
