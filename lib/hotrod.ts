@@ -31,8 +31,11 @@ const FALLBACK_RING_K = 2;
 const url = {
   hexes: (id: string, tech: string) =>
     `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(`hexes/${id}_${tech}.json`)}?alt=media`,
+  // Layer 2 is "ZIP Code Tabulation Areas". (Layer 4 is PUMA — querying it by
+  // ZIP matched nothing, so every ZIP silently fell back to a tiny centroid
+  // disk that under-covered the footprint and dropped terrestrial competitors.)
   zcta: (zip: string) =>
-    `https://tigerweb.geo.census.gov/arcgis/rest/services/Census2020/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/4/query?where=BASENAME%3D%27${zip}%27&outFields=BASENAME&returnGeometry=true&f=geojson&outSR=4326`,
+    `https://tigerweb.geo.census.gov/arcgis/rest/services/Census2020/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/2/query?where=BASENAME%3D%27${zip}%27&outFields=BASENAME&returnGeometry=true&f=geojson&outSR=4326`,
   zipCentroid: (zip: string) => `https://api.zippopotam.us/us/${zip}`
 };
 
