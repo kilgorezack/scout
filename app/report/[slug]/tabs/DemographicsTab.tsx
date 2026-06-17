@@ -30,6 +30,14 @@ export default function DemographicsTab({ report }: { report: ReportPayload }) {
           (We show nothing rather than estimated numbers.)
         </div>
       )}
+      {status === 'no_zcta' && (
+        <div className="mb-5 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+          These ZIP{report.zips.length === 1 ? '' : 's'} have no Census ZIP Code Tabulation Area —
+          typically PO-box or non-residential ZIPs (e.g. 83002) — so the Census doesn&apos;t publish
+          ACS population/income for them. Business-establishment counts (ZIP Business Patterns) are
+          still shown. Use a residential ZIP (e.g. 83001 for Jackson) for full demographics.
+        </div>
+      )}
       {status === 'rejected' && (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           A <span className="font-mono">CENSUS_API_KEY</span> is configured, but the Census API returned

@@ -32,9 +32,10 @@ export type ReportPayload = ReportInput & {
   footprintStates: string[];
   news: CompetitorNews[];
   demographics: ZipDemographics[];
-  // 'ok' = real data; 'no_key' = CENSUS_API_KEY not set; 'rejected' = key set
-  // but Census returned nothing (invalid/unactivated key, or upstream error).
-  demographicsStatus: 'ok' | 'no_key' | 'rejected';
+  // 'ok' = real data; 'no_key' = CENSUS_API_KEY not set; 'no_zcta' = key works
+  // but the ZIP(s) have no Census ZCTA (e.g. PO-box ZIPs); 'rejected' = key set
+  // but Census genuinely returned nothing (invalid key or upstream error).
+  demographicsStatus: 'ok' | 'no_key' | 'no_zcta' | 'rejected';
   opportunities: Opportunity[];
   dataSource: ProvidersResult['source'];
   hotrodDiagnostics?: ProvidersResult['hotrod'];
@@ -177,11 +178,17 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   // Demographics status: distinguish "no key configured" from "key set but the
   // Census API returned nothing" (invalid/unactivated key) so the UI can guide.
   const demographicsAvailable = demographics.some((d) => d.population > 0 || d.households > 0 || d.housingUnits > 0);
+  // If ZIP Business Patterns returned counts, the key is demonstrably working —
+  // so empty ACS just means those ZIPs have no ZCTA (PO-box / non-residential),
+  // not a key problem.
+  const censusResponded = demographics.some((d) => d.businessEstablishments > 0);
   const demographicsStatus: ReportPayload['demographicsStatus'] = demographicsAvailable
     ? 'ok'
-    : censusKeyConfigured()
-      ? 'rejected'
-      : 'no_key';
+    : !censusKeyConfigured()
+      ? 'no_key'
+      : censusResponded
+        ? 'no_zcta'
+        : 'rejected';
 
   // Pricing is a baked national snapshot (no network), matched to the
   // footprint's competitors by the same canonical-name logic as reviews.
