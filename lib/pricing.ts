@@ -20,13 +20,16 @@ export type PriceChange = {
   downMbps: number | null;
   oldPrice: number;
   newPrice: number;
-  changedAt: string;
+  // Data-capture (scrape) window the change was observed between — NOT the
+  // provider's official announcement date.
+  observedFrom: string;
+  observedTo: string;
 };
 
 // Snapshot row shapes (see scripts/build-pricing-index.mjs).
 type SummaryRow = [string, number, number | null, number | null, number | null, number | null];
 type TierRow = [string, string, number, number];
-type ChangeRow = [string, string, number | null, number, number, string];
+type ChangeRow = [string, string, number | null, number, number, string, string];
 
 export const TIER_ORDER = ['100M', '300M', '500M', '1G', '2G', '5G+'];
 
@@ -115,7 +118,7 @@ export function priceChangesForProviders(providers: string[], limit = 12): Price
   const keys = new Set(providers.map(canonicalKey));
   const display = new Map(providers.map((p) => [canonicalKey(p), p]));
   const out: PriceChange[] = [];
-  for (const [provider, planName, down, oldPrice, newPrice, changedAt] of changesSnap.changes as ChangeRow[]) {
+  for (const [provider, planName, down, oldPrice, newPrice, observedFrom, observedTo] of changesSnap.changes as ChangeRow[]) {
     const k = canonicalKey(provider);
     if (!keys.has(k)) continue;
     out.push({
@@ -124,7 +127,8 @@ export function priceChangesForProviders(providers: string[], limit = 12): Price
       downMbps: down,
       oldPrice,
       newPrice,
-      changedAt
+      observedFrom,
+      observedTo
     });
   }
   // changesSnap is already newest-first; keep that order.

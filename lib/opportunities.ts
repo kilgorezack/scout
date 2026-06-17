@@ -95,7 +95,7 @@ export function generateOpportunities(args: {
       targetZips: zips,
       evidence: hikes
         .slice(0, 5)
-        .map((c) => `${c.providerName}: ${c.planName} $${c.oldPrice} → $${c.newPrice} (${c.changedAt.slice(0, 10)})`),
+        .map((c) => `${c.providerName}: ${c.planName} $${c.oldPrice} → $${c.newPrice} (observed ${c.observedFrom}–${c.observedTo})`),
       priority: 'medium'
     });
   }

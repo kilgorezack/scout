@@ -109,6 +109,10 @@ export default function PricingTab({ report }: { report: ReportPayload }) {
         <div>
           <p className="eyebrow">Pricing moves</p>
           <h3 className="display mt-2 text-2xl text-ink-900">Recent competitor price changes</h3>
+          <p className="mt-1 text-sm text-ink-600">
+            Detected between data captures — the change occurred somewhere in the observed window, not
+            necessarily on the latest date.
+          </p>
           <div className="mt-4 space-y-2">
             {report.priceChanges.map((ch, i) => {
               const up = ch.newPrice > ch.oldPrice;
@@ -123,7 +127,7 @@ export default function PricingTab({ report }: { report: ReportPayload }) {
                       <span className="text-ink-600">{ch.planName}</span>
                       {ch.downMbps ? <span className="text-ink-400"> · {formatNumber(ch.downMbps)}M</span> : null}
                     </div>
-                    <div className="text-[11px] text-ink-500">{new Date(ch.changedAt).toLocaleDateString()}</div>
+                    <div className="text-[11px] text-ink-500">observed {ch.observedFrom} → {ch.observedTo}</div>
                   </div>
                   <div className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${up ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
                     {up ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}

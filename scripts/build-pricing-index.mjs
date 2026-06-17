@@ -110,6 +110,7 @@ for (const v of versions) {
   arr.push(v);
   byPlan.set(v.plan_id, arr);
 }
+const day = (ts) => (ts ? String(ts).slice(0, 10) : null);
 const changes = [];
 for (const arr of byPlan.values()) {
   arr.sort((x, y) => x.version_number - y.version_number);
@@ -121,10 +122,19 @@ for (const arr of byPlan.values()) {
     if (![prev, cur].every((p) => p >= 20 && p <= 500)) continue;
     const name = providers.get(arr[i].provider_id);
     if (!name) continue;
-    changes.push([name, arr[i].plan_name, speeds.get(arr[i].speed_tier_id) ?? null, round(prev, 2), round(cur, 2), arr[i].versioned_at]);
+    // observedFrom..observedTo = the scrape window the change was detected in.
+    changes.push([
+      name,
+      arr[i].plan_name,
+      speeds.get(arr[i].speed_tier_id) ?? null,
+      round(prev, 2),
+      round(cur, 2),
+      day(arr[i - 1].versioned_at),
+      day(arr[i].versioned_at)
+    ]);
   }
 }
-changes.sort((a, b) => new Date(b[5]) - new Date(a[5]));
+changes.sort((a, b) => new Date(b[6]) - new Date(a[6]));
 
 writeFileSync(
   new URL('../lib/provider-pricing.json', import.meta.url),
@@ -132,7 +142,7 @@ writeFileSync(
 );
 writeFileSync(
   new URL('../lib/provider-price-changes.json', import.meta.url),
-  JSON.stringify({ note: 'Plan price changes from plan_versions: [provider,planName,downMbps,oldPrice,newPrice,changedAt].', changes: changes.slice(0, 4000) })
+  JSON.stringify({ note: 'Plan price changes from plan_versions: [provider,planName,downMbps,oldPrice,newPrice,observedFrom,observedTo]. Dates are scrape-capture dates; the change occurred within that window.', changes: changes.slice(0, 4000) })
 );
 const speedRows = [...speedByProvTech.entries()].map(([k, s]) => {
   const i = k.lastIndexOf('|');

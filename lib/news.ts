@@ -40,9 +40,9 @@ export async function newsForProviders(providers: string[]): Promise<CompetitorN
     const plan = c.planName ? `${c.planName} ` : '';
     return {
       providerName: c.providerName,
-      title: `${plan}${speed}${up ? 'price increase' : 'price cut'}: $${c.oldPrice} → $${c.newPrice}`,
+      title: `${plan}${speed}${up ? 'price increase' : 'price cut'}: $${c.oldPrice} → $${c.newPrice} (observed ${c.observedFrom} → ${c.observedTo})`,
       url: '',
-      publishedAt: c.changedAt.slice(0, 10),
+      publishedAt: c.observedTo,
       category: 'pricing' as NewsCategory
     };
   });

@@ -139,18 +139,56 @@ function ReputationCard({
   );
 }
 
+const TERRESTRIAL = ['Fiber', 'Cable', 'DSL'];
+
 function summarize(
   report: ReportPayload,
   s: { totalLocations: number; totalHouseholds: number; totalBusinesses: number; medianIncome: number }
 ): string {
   const company = report.companyName ?? 'You';
-  const top3 = report.competitors.slice(0, 3).map((c) => c.providerName);
-  const fiberCompetitors = report.competitors.filter((c) => c.technologies.includes('Fiber')).length;
-  const fwaCompetitors = report.competitors.filter((c) => c.technologies.includes('FWA')).length;
+  const isTerrestrial = (c: { technologies: string[] }) => c.technologies.some((t) => TERRESTRIAL.includes(t));
 
-  return [
-    `${company} is analyzing ${report.zips.length} ZIP${report.zips.length === 1 ? '' : 's'} with ${formatNumber(s.totalHouseholds)} households and roughly ${formatNumber(s.totalBusinesses)} small business establishments (median HH income ${formatCurrency(s.medianIncome)}).`,
-    `${report.competitors.length} competing providers overlap with this footprint — led by ${top3.join(', ') || '—'}.`,
-    `${fiberCompetitors} compete on fiber and ${fwaCompetitors} compete via fixed wireless. Scout identified ${report.opportunities.length} ranked opportunit${report.opportunities.length === 1 ? 'y' : 'ies'} to defend or expand share.`
-  ].join(' ');
+  // Lead with the wireline battleground — satellite/FWA cover huge areas and
+  // would otherwise dominate a footprint-ranked list, drowning out the
+  // terrestrial competitors that actually matter head-to-head.
+  const terrestrial = report.competitors.filter(isTerrestrial);
+  const wireless = report.competitors.filter((c) => !isTerrestrial(c));
+  const fiber = terrestrial.filter((c) => c.technologies.includes('Fiber')).length;
+  const cable = terrestrial.filter((c) => c.technologies.includes('Cable')).length;
+
+  const topTerr = terrestrial
+    .slice(0, 4)
+    .map(
+      (c) =>
+        `${c.providerName} (${c.technologies.filter((t) => TERRESTRIAL.includes(t)).join('/')}${
+          c.maxDownMbps ? `, up to ${formatNumber(c.maxDownMbps)} Mbps` : ''
+        })`
+    );
+
+  const parts: string[] = [];
+  parts.push(
+    `${company} is analyzing ${report.zips.length} ZIP${report.zips.length === 1 ? '' : 's'}${
+      s.totalHouseholds ? ` covering ${formatNumber(s.totalHouseholds)} households` : ''
+    }${s.medianIncome ? ` (median HH income ${formatCurrency(s.medianIncome)})` : ''}.`
+  );
+
+  if (terrestrial.length > 0) {
+    parts.push(
+      `The wireline battleground: ${terrestrial.length} terrestrial competitor${terrestrial.length === 1 ? '' : 's'} (${fiber} fiber, ${cable} cable) — led by ${topTerr.join('; ')}.`
+    );
+  } else {
+    parts.push('No terrestrial (fiber / cable / DSL) competitor overlaps this footprint on record.');
+  }
+
+  if (wireless.length > 0) {
+    const names = wireless.slice(0, 3).map((c) => c.providerName).join(', ');
+    parts.push(
+      `${wireless.length} fixed-wireless / satellite option${wireless.length === 1 ? '' : 's'} (${names}) also reach the area, but compete mainly on availability rather than speed.`
+    );
+  }
+
+  parts.push(
+    `Scout identified ${report.opportunities.length} ranked opportunit${report.opportunities.length === 1 ? 'y' : 'ies'} to defend or expand share.`
+  );
+  return parts.join(' ');
 }
