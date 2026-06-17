@@ -33,6 +33,7 @@ export default async function ReportPage({ params }: { params: Promise<{ slug: s
       priceChanges: [],
       footprintStates: [],
       news: [],
+      demographicsStatus: 'rejected',
       demographics: input.zips.map((z) => ({
         zip: z,
         population: 0,

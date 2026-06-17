@@ -12,7 +12,7 @@ export default function DemographicsTab({ report }: { report: ReportPayload }) {
     { population: 0, households: 0, housingUnits: 0, businesses: 0 }
   );
 
-  const unavailable = totals.population === 0 && totals.households === 0 && totals.housingUnits === 0;
+  const status = report.demographicsStatus;
 
   return (
     <>
@@ -23,11 +23,22 @@ export default function DemographicsTab({ report }: { report: ReportPayload }) {
         </h2>
       </div>
 
-      {unavailable && (
+      {status === 'no_key' && (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Census demographics are unavailable for this report. The U.S. Census API now requires a
-          free API key — set <span className="font-mono">CENSUS_API_KEY</span> in the environment to
-          populate these figures. (We show nothing rather than estimated numbers.)
+          Census demographics are unavailable. The U.S. Census API requires a free API key — set{' '}
+          <span className="font-mono">CENSUS_API_KEY</span> in the environment to populate these figures.
+          (We show nothing rather than estimated numbers.)
+        </div>
+      )}
+      {status === 'rejected' && (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          A <span className="font-mono">CENSUS_API_KEY</span> is configured, but the Census API returned
+          no data — usually an unactivated or mistyped key, or the env var isn&apos;t live in this
+          deployment. Verify the key (activation email link), confirm it&apos;s set for this environment,
+          and redeploy. Test it directly:{' '}
+          <span className="font-mono break-all">
+            api.census.gov/data/2022/acs/acs5?get=NAME,B01003_001E&amp;for=zip%20code%20tabulation%20area:83001&amp;key=YOUR_KEY
+          </span>
         </div>
       )}
 

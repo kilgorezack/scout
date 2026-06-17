@@ -28,11 +28,8 @@ function zero(zip: string): ZipDemographics {
 // Real establishment count for a ZIP, or 0 when unavailable. Never fabricated.
 async function establishmentsForZip(zip: string, key?: string): Promise<number> {
   try {
-    const url = new URL(ZBP_BASE);
-    url.searchParams.set('get', 'ESTAB');
-    url.searchParams.set('for', `zipcode:${zip}`);
-    if (key) url.searchParams.set('key', key);
-    const res = await fetch(url.toString(), {
+    const params = `get=ESTAB&for=${encodeURIComponent(`zipcode:${zip}`)}` + (key ? `&key=${encodeURIComponent(key)}` : '');
+    const res = await fetch(`${ZBP_BASE}?${params}`, {
       next: { revalidate: 60 * 60 * 24 * 30 },
       signal: AbortSignal.timeout(6000)
     });
@@ -60,14 +57,18 @@ export async function demographicsForZips(zips: string[]): Promise<ZipDemographi
       'B19013_001E', // median household income
       'B25003_002E' // owner-occupied units
     ];
-    const url = new URL(ACS_BASE);
-    url.searchParams.set('get', variables.join(','));
-    url.searchParams.set('for', `zip code tabulation area:${zips.join(',')}`);
-    if (key) url.searchParams.set('key', key);
+    // Build the query manually: URLSearchParams encodes spaces as '+', but the
+    // Census API only accepts '%20' in the "for" geography ("zip code
+    // tabulation area"), so a '+' silently breaks the request. encodeURIComponent
+    // yields %20 / %3A / %2C, which the API accepts.
+    const params =
+      `get=${variables.join(',')}` +
+      `&for=${encodeURIComponent(`zip code tabulation area:${zips.join(',')}`)}` +
+      (key ? `&key=${encodeURIComponent(key)}` : '');
 
     // Hard timeout — a hanging Census call must not stall the report build past
     // the function's maxDuration (which surfaces as "Connection closed").
-    const res = await fetch(url.toString(), {
+    const res = await fetch(`${ACS_BASE}?${params}`, {
       next: { revalidate: 60 * 60 * 24 },
       signal: AbortSignal.timeout(8000)
     });

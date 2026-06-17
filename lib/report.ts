@@ -32,6 +32,9 @@ export type ReportPayload = ReportInput & {
   footprintStates: string[];
   news: CompetitorNews[];
   demographics: ZipDemographics[];
+  // 'ok' = real data; 'no_key' = CENSUS_API_KEY not set; 'rejected' = key set
+  // but Census returned nothing (invalid/unactivated key, or upstream error).
+  demographicsStatus: 'ok' | 'no_key' | 'rejected';
   opportunities: Opportunity[];
   dataSource: ProvidersResult['source'];
   hotrodDiagnostics?: ProvidersResult['hotrod'];
@@ -171,6 +174,15 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   const reviews: Record<string, ProviderReview> = {};
   for (const [k, v] of reviewsMap.entries()) reviews[k] = v;
 
+  // Demographics status: distinguish "no key configured" from "key set but the
+  // Census API returned nothing" (invalid/unactivated key) so the UI can guide.
+  const demographicsAvailable = demographics.some((d) => d.population > 0 || d.households > 0 || d.housingUnits > 0);
+  const demographicsStatus: ReportPayload['demographicsStatus'] = demographicsAvailable
+    ? 'ok'
+    : process.env.CENSUS_API_KEY
+      ? 'rejected'
+      : 'no_key';
+
   // Pricing is a baked national snapshot (no network), matched to the
   // footprint's competitors by the same canonical-name logic as reviews.
   const pricing: Record<string, ProviderPricing> = {};
@@ -204,6 +216,7 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
     footprintStates,
     news,
     demographics,
+    demographicsStatus,
     opportunities,
     dataSource: providersResult.source,
     hotrodDiagnostics: providersResult.hotrod
