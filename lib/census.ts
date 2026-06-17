@@ -33,8 +33,17 @@ function zero(zip: string): ZipDemographics {
   };
 }
 
-function isJson(res: Response): boolean {
-  return res.ok && Boolean(res.headers.get('content-type')?.includes('json'));
+// Env values frequently arrive with surrounding quotes or trailing whitespace/
+// newlines (a classic dashboard paste mistake) — that silently invalidates the
+// key. Sanitize before use.
+function censusKey(): string | undefined {
+  const raw = process.env.CENSUS_API_KEY;
+  const cleaned = raw?.trim().replace(/^["']+|["']+$/g, '').trim();
+  return cleaned ? cleaned : undefined;
+}
+
+export function censusKeyConfigured(): boolean {
+  return Boolean(censusKey());
 }
 
 // IMPORTANT: build query strings by hand and encode ONLY spaces as %20. The
@@ -46,10 +55,16 @@ function isJson(res: Response): boolean {
 // Real ACS demographics for one ZCTA, or null when unavailable (never faked).
 async function acsForZip(zip: string, key?: string): Promise<Omit<ZipDemographics, 'businessEstablishments'> | null> {
   try {
-    const url = `${ACS_BASE}?get=${ACS_VARS.join(',')}&for=${`zip code tabulation area:${zip}`.replace(/ /g, '%20')}${key ? `&key=${key}` : ''}`;
+    const url = `${ACS_BASE}?get=${ACS_VARS.join(',')}&for=${`zip code tabulation area:${zip}`.replace(/ /g, '%20')}${key ? `&key=${encodeURIComponent(key)}` : ''}`;
     const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 }, signal: AbortSignal.timeout(8000) });
-    if (!isJson(res)) return null;
-    const json = (await res.json()) as string[][];
+    const body = await res.text();
+    if (!res.ok || !body.trimStart().startsWith('[')) {
+      // Surface the real Census error (e.g. "Invalid Key") in server logs —
+      // never logs the key itself.
+      console.warn(`[census] ACS ${zip} failed: HTTP ${res.status} — ${body.slice(0, 140).replace(/\s+/g, ' ').trim()}`);
+      return null;
+    }
+    const json = JSON.parse(body) as string[][];
     const [header, row] = json;
     if (!row) return null;
     const idx = (col: string) => header.indexOf(col);
@@ -74,10 +89,11 @@ async function acsForZip(zip: string, key?: string): Promise<Omit<ZipDemographic
 // Real establishment count for one ZIP, or 0 when unavailable. Never fabricated.
 async function establishmentsForZip(zip: string, key?: string): Promise<number> {
   try {
-    const url = `${ZBP_BASE}?get=ESTAB&for=zipcode:${zip}${key ? `&key=${key}` : ''}`;
+    const url = `${ZBP_BASE}?get=ESTAB&for=zipcode:${zip}${key ? `&key=${encodeURIComponent(key)}` : ''}`;
     const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 * 30 }, signal: AbortSignal.timeout(6000) });
-    if (!isJson(res)) return 0;
-    const json = (await res.json()) as string[][];
+    const body = await res.text();
+    if (!res.ok || !body.trimStart().startsWith('[')) return 0;
+    const json = JSON.parse(body) as string[][];
     const [header, row] = json;
     const n = Number(row?.[header.indexOf('ESTAB')]);
     return Number.isFinite(n) && n > 0 ? n : 0;
@@ -87,7 +103,7 @@ async function establishmentsForZip(zip: string, key?: string): Promise<number> 
 }
 
 export async function demographicsForZips(zips: string[]): Promise<ZipDemographics[]> {
-  const key = process.env.CENSUS_API_KEY;
+  const key = censusKey();
   // Per-ZIP, fully parallel. ACS and ZBP are independent; either failing just
   // yields zeros for that field — we never invent numbers.
   return Promise.all(

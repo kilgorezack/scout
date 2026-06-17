@@ -9,7 +9,7 @@ import {
 } from './pricing';
 import { maxSpeedForProvider } from './speeds';
 import { newsForProviders, type CompetitorNews } from './news';
-import { demographicsForZips, type ZipDemographics } from './census';
+import { demographicsForZips, censusKeyConfigured, type ZipDemographics } from './census';
 import { generateOpportunities, type Opportunity } from './opportunities';
 import { zipToState } from './zip-state';
 import { getSupabase } from './supabase';
@@ -179,7 +179,7 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   const demographicsAvailable = demographics.some((d) => d.population > 0 || d.households > 0 || d.housingUnits > 0);
   const demographicsStatus: ReportPayload['demographicsStatus'] = demographicsAvailable
     ? 'ok'
-    : process.env.CENSUS_API_KEY
+    : censusKeyConfigured()
       ? 'rejected'
       : 'no_key';
 
