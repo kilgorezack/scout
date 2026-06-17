@@ -161,7 +161,7 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
   // Override technology-default speeds with each provider's real max
   // residential speed from the Supabase plans snapshot when we have it.
   for (const c of competitors) {
-    const sp = maxSpeedForProvider(c.providerName);
+    const sp = maxSpeedForProvider(c.providerName, c.technologies);
     if (sp) {
       c.maxDownMbps = sp.down;
       c.maxUpMbps = sp.up;
@@ -185,7 +185,8 @@ export async function buildReport(input: ReportInput): Promise<ReportPayload> {
       demographics,
       news,
       ownCompany: input.companyName,
-      reviews
+      reviews,
+      priceChanges
     });
   } catch {
     opportunities = [];

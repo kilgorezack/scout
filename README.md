@@ -63,11 +63,23 @@ create table reports (
 );
 ```
 
-Until these tables are populated, Scout ships with:
+## Data integrity
 
-- A deterministic stub provider catalog driving overlap, tech mix, and max speeds per ZIP
-- A mock competitor news feed driving the Opportunities engine
-- A live Census ACS lookup for demographics (falls back to stub on error)
+Scout serves only real data — there is no synthetic/dummy fallback anywhere:
+
+- **Providers & coverage** — live FCC BDC via Hotrod (H3 res-8). If no real data is
+  available for a ZIP, the result is empty, not fabricated competitors.
+- **Speeds** — each competitor's real max residential speed *per technology* from the
+  Supabase `plans` snapshot; falls back to the FCC technology-typical default only when
+  a provider has no plan data.
+- **Locations served** — estimated as Census housing units × the provider's coverage
+  fraction of the ZIP (real housing × real coverage), not a heuristic.
+- **Demographics** — live Census ACS; business establishments from Census ZIP Business
+  Patterns. On failure, fields return 0 ("unavailable"), never invented numbers.
+- **Reviews / pricing / price changes** — baked snapshots rolled up from the Supabase
+  `provider_reviews`, `plans`, and `plan_versions` tables (see below).
+- **Launch radar** — real dated plan price changes from `plan_versions` (or a populated
+  `competitor_news` table), never a mock feed.
 
 ## Provider reviews (Google star ratings)
 

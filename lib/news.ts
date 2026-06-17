@@ -1,6 +1,7 @@
 import { getSupabase } from './supabase';
+import { priceChangesForProviders } from './pricing';
 
-export type NewsCategory = 'smart_home' | 'mobile' | 'fwa' | 'fiber_expansion' | 'b2b' | 'other';
+export type NewsCategory = 'smart_home' | 'mobile' | 'fwa' | 'fiber_expansion' | 'b2b' | 'pricing' | 'other';
 
 export type CompetitorNews = {
   providerName: string;
@@ -10,66 +11,8 @@ export type CompetitorNews = {
   category: NewsCategory;
 };
 
-const MOCK_NEWS: CompetitorNews[] = [
-  {
-    providerName: 'Verizon 5G Home',
-    title: 'Verizon expands 5G Home Internet to 30 new metros',
-    url: 'https://www.verizon.com/about/news',
-    publishedAt: '2026-03-12',
-    category: 'fwa'
-  },
-  {
-    providerName: 'T-Mobile Home Internet',
-    title: 'T-Mobile launches Home Internet Plus with mesh WiFi 6 gateway',
-    url: 'https://www.t-mobile.com/news',
-    publishedAt: '2026-02-04',
-    category: 'smart_home'
-  },
-  {
-    providerName: 'Comcast Xfinity',
-    title: 'Xfinity rolls out Storm-Ready WiFi with cellular backup',
-    url: 'https://corporate.comcast.com/press',
-    publishedAt: '2026-01-22',
-    category: 'smart_home'
-  },
-  {
-    providerName: 'Charter Spectrum',
-    title: 'Spectrum Mobile crosses 10M lines, expands SMB bundles',
-    url: 'https://corporate.charter.com/newsroom',
-    publishedAt: '2026-04-08',
-    category: 'mobile'
-  },
-  {
-    providerName: 'AT&T Fiber',
-    title: 'AT&T Fiber adds 1.5M new locations in 2025',
-    url: 'https://about.att.com/story',
-    publishedAt: '2026-01-30',
-    category: 'fiber_expansion'
-  },
-  {
-    providerName: 'Cox Communications',
-    title: 'Cox Business launches managed WiFi tier for SMB',
-    url: 'https://newsroom.cox.com',
-    publishedAt: '2025-11-15',
-    category: 'b2b'
-  },
-  {
-    providerName: 'Frontier Fiber',
-    title: 'Frontier passes 8M fiber locations; 7-gig tier coming',
-    url: 'https://investor.frontier.com',
-    publishedAt: '2026-02-18',
-    category: 'fiber_expansion'
-  },
-  {
-    providerName: 'Optimum',
-    title: 'Optimum debuts Smart WiFi 7 gateway',
-    url: 'https://www.optimum.com/about',
-    publishedAt: '2026-03-02',
-    category: 'smart_home'
-  }
-];
-
 export async function newsForProviders(providers: string[]): Promise<CompetitorNews[]> {
+  // Real editorial feed if a competitor_news table is populated.
   const supabase = getSupabase();
   if (supabase) {
     const { data } = await supabase
@@ -88,8 +31,19 @@ export async function newsForProviders(providers: string[]): Promise<CompetitorN
       }));
     }
   }
-  const set = new Set(providers);
-  return MOCK_NEWS.filter((n) => set.has(n.providerName)).sort((a, b) =>
-    a.publishedAt < b.publishedAt ? 1 : -1
-  );
+
+  // Otherwise surface real, dated competitor pricing moves from plan_versions —
+  // no fabricated launch feed.
+  return priceChangesForProviders(providers, 30).map((c) => {
+    const up = c.newPrice > c.oldPrice;
+    const speed = c.downMbps ? `${c.downMbps.toLocaleString()}M ` : '';
+    const plan = c.planName ? `${c.planName} ` : '';
+    return {
+      providerName: c.providerName,
+      title: `${plan}${speed}${up ? 'price increase' : 'price cut'}: $${c.oldPrice} → $${c.newPrice}`,
+      url: '',
+      publishedAt: c.changedAt.slice(0, 10),
+      category: 'pricing' as NewsCategory
+    };
+  });
 }

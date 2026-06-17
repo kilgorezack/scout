@@ -2,6 +2,7 @@ import type { ProviderInZip } from './bdc';
 import type { ZipDemographics } from './census';
 import type { CompetitorNews } from './news';
 import type { ProviderReview } from './reviews';
+import type { PriceChange } from './pricing';
 import { SOLUTIONS, type Solution } from './solutions';
 
 export type Opportunity = {
@@ -33,9 +34,11 @@ export function generateOpportunities(args: {
   news: CompetitorNews[];
   ownCompany: string | null;
   reviews?: Record<string, ProviderReview>;
+  priceChanges?: PriceChange[];
 }): Opportunity[] {
-  const { providersByZip, demographics, news } = args;
+  const { providersByZip, demographics } = args;
   const reviews = args.reviews ?? {};
+  const priceChanges = args.priceChanges ?? [];
   const ownCompany = (args.ownCompany ?? '').trim().toLowerCase();
   const opportunities: Opportunity[] = [];
 
@@ -79,45 +82,21 @@ export function generateOpportunities(args: {
     });
   }
 
-  const smartHomeNews = news.filter((n) => n.category === 'smart_home');
-  if (smartHomeNews.length > 0) {
+  // Real competitor price increases (from plan_versions) → win switchers on
+  // value with a price-locked premium experience.
+  const hikes = priceChanges.filter((c) => c.newPrice > c.oldPrice);
+  if (hikes.length > 0) {
     opportunities.push({
-      id: 'counter-smarthome',
-      solution: findSolution('smart-home'),
-      rationaleHeadline: 'Competitors are racing to managed in-home WiFi — counter with a premium experience tier.',
-      rationaleDetail:
-        'Recent competitor launches focus on managed WiFi, mesh gateways, and in-home security. A whole-home WiFi experience with bundled network security neutralizes their pitch and protects ARPU.',
-      targetZips: zips,
-      evidence: smartHomeNews.slice(0, 4).map((n) => `${n.providerName}: "${n.title}" (${n.publishedAt})`),
-      priority: 'high'
-    });
-  }
-
-  const mobileNews = news.filter((n) => n.category === 'mobile');
-  if (mobileNews.length > 0) {
-    opportunities.push({
-      id: 'counter-mobile-bundle',
-      solution: findSolution('smart-biz-mobile'),
-      rationaleHeadline: 'Cable MSOs are weaponizing mobile bundles — respond with a converged SMB offer.',
-      rationaleDetail:
-        'A fixed + mobile bundle for small business answers MSO mobile growth directly and lifts retention on the SMB base.',
-      targetZips: zips,
-      evidence: mobileNews.slice(0, 3).map((n) => `${n.providerName}: "${n.title}" (${n.publishedAt})`),
-      priority: 'medium'
-    });
-  }
-
-  const fwaNews = news.filter((n) => n.category === 'fwa');
-  if (fwaNews.length > 0) {
-    opportunities.push({
-      id: 'counter-fwa',
+      id: 'price-increase',
       solution: findSolution('home-office'),
-      rationaleHeadline: 'FWA expansion is targeting your work-from-home base — protect ARPU with a premium tier.',
+      rationaleHeadline: `Competitors just raised prices — ${hikes.length} recent increase${hikes.length > 1 ? 's' : ''} in this footprint.`,
       rationaleDetail:
-        'FWA undercuts on price but loses on consistent uplink and latency. Lead with a guaranteed-experience Home Office tier (priority bandwidth, white-glove support).',
+        'When incumbents push rates up, their subscribers actively shop. Lead with a price-locked, guaranteed-experience tier to capture switchers at the moment they re-evaluate.',
       targetZips: zips,
-      evidence: fwaNews.slice(0, 3).map((n) => `${n.providerName}: "${n.title}" (${n.publishedAt})`),
-      priority: 'high'
+      evidence: hikes
+        .slice(0, 5)
+        .map((c) => `${c.providerName}: ${c.planName} $${c.oldPrice} → $${c.newPrice} (${c.changedAt.slice(0, 10)})`),
+      priority: 'medium'
     });
   }
 
@@ -129,7 +108,7 @@ export function generateOpportunities(args: {
   const medianIncome = median(demographics.map((d) => d.medianHouseholdIncome));
   const medianBiz = median(demographics.map((d) => d.businessEstablishments));
 
-  const highIncomeZips = zips.filter((z) => (incomeByZip.get(z) ?? 0) >= medianIncome * 1.15);
+  const highIncomeZips = medianIncome > 0 ? zips.filter((z) => (incomeByZip.get(z) ?? 0) >= medianIncome * 1.15) : [];
   if (highIncomeZips.length > 0) {
     opportunities.push({
       id: 'wfh-premium',
@@ -145,7 +124,7 @@ export function generateOpportunities(args: {
     });
   }
 
-  const smbZips = zips.filter((z) => (businessByZip.get(z) ?? 0) >= medianBiz * 1.2);
+  const smbZips = medianBiz > 0 ? zips.filter((z) => (businessByZip.get(z) ?? 0) >= medianBiz * 1.2) : [];
   if (smbZips.length > 0) {
     opportunities.push({
       id: 'smb-density',

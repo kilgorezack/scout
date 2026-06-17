@@ -49,23 +49,33 @@ const providers = new Map((await fetchAll('providers', 'id,name')).map((p) => [p
 const speedTiers = await fetchAll('speed_tiers', 'id,download_mbps,upload_mbps');
 const speeds = new Map(speedTiers.map((s) => [s.id, s.download_mbps]));
 const speedsUp = new Map(speedTiers.map((s) => [s.id, s.upload_mbps]));
-const plans = await fetchAll('plans', 'provider_id,speed_tier_id,price_usd');
+const techCat = new Map(
+  (await fetchAll('technologies', 'id,code')).map((t) => {
+    const c = t.code;
+    const cat =
+      c === 10 ? 'DSL' : c === 40 ? 'Cable' : c === 50 ? 'Fiber' : c === 60 || c === 61 ? 'Satellite' : c === 70 || c === 71 || c === 72 ? 'FWA' : 'Other';
+    return [t.id, cat];
+  })
+);
+const plans = await fetchAll('plans', 'provider_id,speed_tier_id,technology_id,price_usd');
 
 // Per-provider summary + tiers, plus real max residential speed.
 const byProv = new Map();
-const speedByProv = new Map(); // provider -> { down, up }
+const speedByProvTech = new Map(); // `provider|cat` -> { down, up }
 for (const p of plans) {
   const name = providers.get(p.provider_id);
   const down = speeds.get(p.speed_tier_id);
   const up = speedsUp.get(p.speed_tier_id);
   const price = p.price_usd;
+  const cat = techCat.get(p.technology_id);
 
-  // Max residential speed: any priced ($20–500) plan within 1–10,000 Mbps.
-  if (name && down != null && price != null && price >= 20 && price <= 500 && down >= 1 && down <= 10000) {
-    const s = speedByProv.get(name) ?? { down: 0, up: 0 };
+  // Max residential speed per technology: any priced ($20–500) plan, 1–10,000 Mbps.
+  if (name && cat && cat !== 'Other' && down != null && price != null && price >= 20 && price <= 500 && down >= 1 && down <= 10000) {
+    const k = `${name}|${cat}`;
+    const s = speedByProvTech.get(k) ?? { down: 0, up: 0 };
     s.down = Math.max(s.down, down);
     s.up = Math.max(s.up, up ?? 0);
-    speedByProv.set(name, s);
+    speedByProvTech.set(k, s);
   }
 
   if (!name || down == null || price == null || !sane(price, down)) continue;
@@ -124,9 +134,12 @@ writeFileSync(
   new URL('../lib/provider-price-changes.json', import.meta.url),
   JSON.stringify({ note: 'Plan price changes from plan_versions: [provider,planName,downMbps,oldPrice,newPrice,changedAt].', changes: changes.slice(0, 4000) })
 );
-const speedRows = [...speedByProv.entries()].map(([name, s]) => [name, s.down, s.up]);
+const speedRows = [...speedByProvTech.entries()].map(([k, s]) => {
+  const i = k.lastIndexOf('|');
+  return [k.slice(0, i), k.slice(i + 1), s.down, s.up];
+});
 writeFileSync(
   new URL('../lib/provider-speeds.json', import.meta.url),
-  JSON.stringify({ note: 'Max residential speed per provider from plans ($20-500): [provider, maxDownMbps, maxUpMbps].', speeds: speedRows })
+  JSON.stringify({ note: 'Max residential speed per provider per technology from plans ($20-500): [provider, tech, maxDownMbps, maxUpMbps].', speeds: speedRows })
 );
 console.error(`Wrote ${summary.length} providers, ${tiers.length} tier rows, ${changes.length} price changes, ${speedRows.length} speed rows.`);
