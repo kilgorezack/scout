@@ -75,66 +75,58 @@ export async function providersForZipsWithSource(zips: string[]): Promise<Provid
     const allHexes = [...new Set([...zipHexMap.values()].flatMap((s) => [...s]))];
 
     if (allHexes.length > 0) {
+      // Query from plans → providers, filtering to plans that have at least one
+      // h3_cell_plans row in the ZIP's hex set. Using !inner forces an inner join
+      // so only matching plans are returned — one row per plan instead of one per
+      // (hex × plan), keeping the result set small regardless of hex count.
       const BATCH = 500;
-      const allRows: Array<{
-        h3_res8_id: string;
-        provider_name: string;
-        tech_code: number;
-        download_mbps: number | null;
-        upload_mbps: number | null;
-      }> = [];
+      type PlanRow = {
+        id: number;
+        providers: { name: string } | null;
+        speed_tiers: { download_mbps: number | null; upload_mbps: number | null } | null;
+        technologies: { code: number } | null;
+        h3_cell_plans: { h3_res8_id: string }[];
+      };
+      const planRows: PlanRow[] = [];
 
       for (let i = 0; i < allHexes.length; i += BATCH) {
         const batch = allHexes.slice(i, i + BATCH);
         const { data, error } = await supabase
-          .from('h3_cell_plans')
-          .select('h3_res8_id, plans(providers(name), speed_tiers(download_mbps, upload_mbps), technologies(code))')
-          .in('h3_res8_id', batch);
+          .from('plans')
+          .select('id, providers(name), speed_tiers(download_mbps, upload_mbps), technologies(code), h3_cell_plans!inner(h3_res8_id)')
+          .in('h3_cell_plans.h3_res8_id', batch);
         if (error || !data) continue;
-        for (const row of data as unknown[]) {
-          const r = row as {
-            h3_res8_id: string;
-            plans: {
-              providers: { name: string } | null;
-              speed_tiers: { download_mbps: number | null; upload_mbps: number | null } | null;
-              technologies: { code: number } | null;
-            } | null;
-          };
-          if (!r.plans?.providers?.name) continue;
-          const techCode = r.plans.technologies?.code ?? -1;
-          if (!(techCode in TECH_MAP)) continue;
-          allRows.push({
-            h3_res8_id: r.h3_res8_id,
-            provider_name: r.plans.providers.name,
-            tech_code: techCode,
-            download_mbps: r.plans.speed_tiers?.download_mbps ?? null,
-            upload_mbps: r.plans.speed_tiers?.upload_mbps ?? null
-          });
-        }
+        for (const row of data as unknown[]) planRows.push(row as PlanRow);
       }
 
-      if (allRows.length > 0) {
+      if (planRows.length > 0) {
         const merged = new Map<string, ProviderInZip>();
-        for (const row of allRows) {
+        for (const plan of planRows) {
+          if (!plan.providers?.name) continue;
+          const techCode = plan.technologies?.code ?? -1;
+          if (!(techCode in TECH_MAP)) continue;
+          const tech = TECH_MAP[techCode];
+          const matchingHexes = plan.h3_cell_plans.map((h) => h.h3_res8_id);
+
           for (const [zip, hexes] of zipHexMap) {
-            if (!hexes.has(row.h3_res8_id)) continue;
-            const tech = TECH_MAP[row.tech_code];
-            const key = `${zip}|${row.provider_name}`;
+            const hexCount = matchingHexes.filter((h) => hexes.has(h)).length;
+            if (hexCount === 0) continue;
+            const key = `${zip}|${plan.providers.name}`;
             const existing = merged.get(key);
             if (existing) {
               if (!existing.technologies.includes(tech)) existing.technologies.push(tech);
-              existing.maxDownMbps = Math.max(existing.maxDownMbps, row.download_mbps ?? 0);
-              existing.maxUpMbps = Math.max(existing.maxUpMbps, row.upload_mbps ?? 0);
-              existing.coverageHexes = (existing.coverageHexes ?? 0) + 1;
+              existing.maxDownMbps = Math.max(existing.maxDownMbps, plan.speed_tiers?.download_mbps ?? 0);
+              existing.maxUpMbps = Math.max(existing.maxUpMbps, plan.speed_tiers?.upload_mbps ?? 0);
+              existing.coverageHexes = (existing.coverageHexes ?? 0) + hexCount;
             } else {
               merged.set(key, {
                 zip,
-                providerName: row.provider_name,
+                providerName: plan.providers.name,
                 technologies: [tech],
-                maxDownMbps: row.download_mbps ?? 0,
-                maxUpMbps: row.upload_mbps ?? 0,
+                maxDownMbps: plan.speed_tiers?.download_mbps ?? 0,
+                maxUpMbps: plan.speed_tiers?.upload_mbps ?? 0,
                 locationsServed: 0,
-                coverageHexes: 1
+                coverageHexes: hexCount
               });
             }
           }
