@@ -75,49 +75,66 @@ export async function providersForZipsWithSource(zips: string[]): Promise<Provid
     const allHexes = [...new Set([...zipHexMap.values()].flatMap((s) => [...s]))];
 
     if (allHexes.length > 0) {
-      // Query from plans → providers, filtering to plans that have at least one
-      // h3_cell_plans row in the ZIP's hex set. Using !inner forces an inner join
-      // so only matching plans are returned — one row per plan instead of one per
-      // (hex × plan), keeping the result set small regardless of hex count.
+      // Step 1: fetch (h3_res8_id, plan_id) pairs for all ZIP hexes.
+      // Only two lightweight columns — avoids the row-count explosion that
+      // happens when joining providers/speeds inline. Limit set high enough
+      // to cover dense urban ZIPs while staying within Supabase's query budget.
       const BATCH = 500;
-      type PlanRow = {
-        id: number;
-        providers: { name: string } | null;
-        speed_tiers: { download_mbps: number | null; upload_mbps: number | null } | null;
-        technologies: { code: number } | null;
-        h3_cell_plans: { h3_res8_id: string }[];
-      };
-      const planRows: PlanRow[] = [];
+      const hexPlanPairs: { h3_res8_id: string; plan_id: number }[] = [];
 
       for (let i = 0; i < allHexes.length; i += BATCH) {
         const batch = allHexes.slice(i, i + BATCH);
         const { data, error } = await supabase
-          .from('plans')
-          .select('id, providers(name), speed_tiers(download_mbps, upload_mbps), technologies(code), h3_cell_plans!inner(h3_res8_id)')
-          .in('h3_cell_plans.h3_res8_id', batch);
+          .from('h3_cell_plans')
+          .select('h3_res8_id, plan_id')
+          .in('h3_res8_id', batch)
+          .limit(50000);
         if (error || !data) continue;
-        for (const row of data as unknown[]) planRows.push(row as PlanRow);
+        for (const row of data as { h3_res8_id: string; plan_id: number }[]) {
+          hexPlanPairs.push(row);
+        }
       }
 
-      if (planRows.length > 0) {
+      if (hexPlanPairs.length > 0) {
+        // Step 2: look up provider/tech/speed for the unique plan IDs found.
+        const uniquePlanIds = [...new Set(hexPlanPairs.map((r) => r.plan_id))];
+        type PlanDetail = {
+          id: number;
+          providers: { name: string } | null;
+          speed_tiers: { download_mbps: number | null; upload_mbps: number | null } | null;
+          technologies: { code: number } | null;
+        };
+        const planDetails = new Map<number, PlanDetail>();
+
+        const PLAN_BATCH = 200;
+        for (let i = 0; i < uniquePlanIds.length; i += PLAN_BATCH) {
+          const batch = uniquePlanIds.slice(i, i + PLAN_BATCH);
+          const { data, error } = await supabase
+            .from('plans')
+            .select('id, providers(name), speed_tiers(download_mbps, upload_mbps), technologies(code)')
+            .in('id', batch);
+          if (error || !data) continue;
+          for (const row of data as unknown as PlanDetail[]) planDetails.set(row.id, row);
+        }
+
+        // Step 3: aggregate per (zip, provider) using the hex→plan→provider mapping.
         const merged = new Map<string, ProviderInZip>();
-        for (const plan of planRows) {
-          if (!plan.providers?.name) continue;
+        for (const { h3_res8_id, plan_id } of hexPlanPairs) {
+          const plan = planDetails.get(plan_id);
+          if (!plan?.providers?.name) continue;
           const techCode = plan.technologies?.code ?? -1;
           if (!(techCode in TECH_MAP)) continue;
           const tech = TECH_MAP[techCode];
-          const matchingHexes = plan.h3_cell_plans.map((h) => h.h3_res8_id);
 
           for (const [zip, hexes] of zipHexMap) {
-            const hexCount = matchingHexes.filter((h) => hexes.has(h)).length;
-            if (hexCount === 0) continue;
+            if (!hexes.has(h3_res8_id)) continue;
             const key = `${zip}|${plan.providers.name}`;
             const existing = merged.get(key);
             if (existing) {
               if (!existing.technologies.includes(tech)) existing.technologies.push(tech);
               existing.maxDownMbps = Math.max(existing.maxDownMbps, plan.speed_tiers?.download_mbps ?? 0);
               existing.maxUpMbps = Math.max(existing.maxUpMbps, plan.speed_tiers?.upload_mbps ?? 0);
-              existing.coverageHexes = (existing.coverageHexes ?? 0) + hexCount;
+              existing.coverageHexes = (existing.coverageHexes ?? 0) + 1;
             } else {
               merged.set(key, {
                 zip,
@@ -126,11 +143,12 @@ export async function providersForZipsWithSource(zips: string[]): Promise<Provid
                 maxDownMbps: plan.speed_tiers?.download_mbps ?? 0,
                 maxUpMbps: plan.speed_tiers?.upload_mbps ?? 0,
                 locationsServed: 0,
-                coverageHexes: hexCount
+                coverageHexes: 1
               });
             }
           }
         }
+
         if (merged.size > 0) {
           const rows = Array.from(merged.values()).map((r) => ({
             ...r,
