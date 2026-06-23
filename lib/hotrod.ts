@@ -119,7 +119,7 @@ async function zipCentroid(zip: string): Promise<[number, number] | null> {
   return [lat, lng];
 }
 
-function getZipHexes(zip: string): Promise<Set<string>> {
+export function getZipHexes(zip: string): Promise<Set<string>> {
   let p = zipHexCache.get(zip);
   if (!p) {
     p = (async () => {

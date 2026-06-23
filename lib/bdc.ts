@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase';
-import { hotrodConfigured, hotrodProvidersForZips, type HotrodDiagnostics } from './hotrod';
+import { hotrodConfigured, hotrodProvidersForZips, getZipHexes, type HotrodDiagnostics } from './hotrod';
 
 export type Technology = 'Fiber' | 'Cable' | 'FWA' | 'DSL' | 'Satellite';
 
@@ -62,34 +62,91 @@ export async function providersForZipsWithSource(zips: string[]): Promise<Provid
 
   const supabase = getSupabase();
   if (supabase) {
-    const { data, error } = await supabase
-      .from('bdc_zip_provider')
-      .select('zip, provider_name, technology, max_down_mbps, max_up_mbps, locations')
-      .in('zip', zips);
-    if (!error && data && data.length > 0) {
-      const merged = new Map<string, ProviderInZip>();
-      for (const row of data) {
-        const key = `${row.zip}|${row.provider_name}`;
-        const existing = merged.get(key);
-        if (existing) {
-          if (!existing.technologies.includes(row.technology as Technology)) {
-            existing.technologies.push(row.technology as Technology);
-          }
-          existing.maxDownMbps = Math.max(existing.maxDownMbps, row.max_down_mbps ?? 0);
-          existing.maxUpMbps = Math.max(existing.maxUpMbps, row.max_up_mbps ?? 0);
-          existing.locationsServed = Math.max(existing.locationsServed, row.locations ?? 0);
-        } else {
-          merged.set(key, {
-            zip: row.zip,
-            providerName: row.provider_name,
-            technologies: [row.technology as Technology],
-            maxDownMbps: row.max_down_mbps ?? 0,
-            maxUpMbps: row.max_up_mbps ?? 0,
-            locationsServed: row.locations ?? 0
+    // FCC tech code → Technology label.
+    const TECH_MAP: Record<number, Technology> = {
+      10: 'DSL', 40: 'Cable', 50: 'Fiber',
+      60: 'Satellite', 61: 'Satellite',
+      70: 'FWA', 71: 'FWA', 72: 'FWA'
+    };
+
+    // Convert ZIPs to H3 res-8 hex sets (reuses hotrod's cached Census lookups).
+    const zipHexMap = new Map<string, Set<string>>();
+    await Promise.all(zips.map(async (z) => { zipHexMap.set(z, await getZipHexes(z)); }));
+    const allHexes = [...new Set([...zipHexMap.values()].flatMap((s) => [...s]))];
+
+    if (allHexes.length > 0) {
+      const BATCH = 500;
+      const allRows: Array<{
+        h3_res8_id: string;
+        provider_name: string;
+        tech_code: number;
+        download_mbps: number | null;
+        upload_mbps: number | null;
+      }> = [];
+
+      for (let i = 0; i < allHexes.length; i += BATCH) {
+        const batch = allHexes.slice(i, i + BATCH);
+        const { data, error } = await supabase
+          .from('h3_cell_plans')
+          .select('h3_res8_id, plans(providers(name), speed_tiers(download_mbps, upload_mbps), technologies(code))')
+          .in('h3_res8_id', batch);
+        if (error || !data) continue;
+        for (const row of data as unknown[]) {
+          const r = row as {
+            h3_res8_id: string;
+            plans: {
+              providers: { name: string } | null;
+              speed_tiers: { download_mbps: number | null; upload_mbps: number | null } | null;
+              technologies: { code: number } | null;
+            } | null;
+          };
+          if (!r.plans?.providers?.name) continue;
+          const techCode = r.plans.technologies?.code ?? -1;
+          if (!(techCode in TECH_MAP)) continue;
+          allRows.push({
+            h3_res8_id: r.h3_res8_id,
+            provider_name: r.plans.providers.name,
+            tech_code: techCode,
+            download_mbps: r.plans.speed_tiers?.download_mbps ?? null,
+            upload_mbps: r.plans.speed_tiers?.upload_mbps ?? null
           });
         }
       }
-      return { rows: Array.from(merged.values()), source: 'supabase' };
+
+      if (allRows.length > 0) {
+        const merged = new Map<string, ProviderInZip>();
+        for (const row of allRows) {
+          for (const [zip, hexes] of zipHexMap) {
+            if (!hexes.has(row.h3_res8_id)) continue;
+            const tech = TECH_MAP[row.tech_code];
+            const key = `${zip}|${row.provider_name}`;
+            const existing = merged.get(key);
+            if (existing) {
+              if (!existing.technologies.includes(tech)) existing.technologies.push(tech);
+              existing.maxDownMbps = Math.max(existing.maxDownMbps, row.download_mbps ?? 0);
+              existing.maxUpMbps = Math.max(existing.maxUpMbps, row.upload_mbps ?? 0);
+              existing.coverageHexes = (existing.coverageHexes ?? 0) + 1;
+            } else {
+              merged.set(key, {
+                zip,
+                providerName: row.provider_name,
+                technologies: [tech],
+                maxDownMbps: row.download_mbps ?? 0,
+                maxUpMbps: row.upload_mbps ?? 0,
+                locationsServed: 0,
+                coverageHexes: 1
+              });
+            }
+          }
+        }
+        if (merged.size > 0) {
+          const rows = Array.from(merged.values()).map((r) => ({
+            ...r,
+            locationsServed: (r.coverageHexes ?? 1) * 15
+          }));
+          return { rows: mergeRows(rows), source: 'supabase' };
+        }
+      }
     }
   }
 
