@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   title: 'Scout — Broadband Competitive Intelligence',
   description:
     'Scout turns a list of ZIP codes into a complete competitive briefing for broadband service providers.',
+  // The site is private end to end — nothing here should be indexed.
+  robots: { index: false, follow: false },
   openGraph: {
     title: 'Scout — Broadband Competitive Intelligence',
     description: 'A modern competitive intelligence platform for broadband service providers.',

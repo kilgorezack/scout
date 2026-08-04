@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifyIdToken, SESSION_COOKIE } from '@/lib/auth-verify';
 
-// Everything is gated behind sign-in except the marketing home page, the login
-// page itself, the auth endpoint, and static assets.
-const PUBLIC_PAGES = new Set(['/', '/login']);
+// Every page is gated behind sign-in — including the home page. The only
+// routes reachable while signed out are the login page itself, the auth
+// endpoint it posts to, and static assets.
+const PUBLIC_PAGES = new Set(['/login']);
 const ASSET_RE = /\.(js|css|map|ico|png|jpg|jpeg|svg|webp|gif|woff2?|ttf|txt|xml|json|wasm)$/i;
 
 function isPublic(pathname: string): boolean {

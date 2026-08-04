@@ -1,12 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 
 export default function NavAuth() {
   const { user, loading, signOutUser } = useAuth();
-  const router = useRouter();
 
   if (loading) {
     return <span className="h-7 w-7 animate-pulse rounded-full bg-ink-100" aria-hidden />;
@@ -25,7 +23,9 @@ export default function NavAuth() {
 
   async function handleSignOut() {
     await signOutUser();
-    router.push('/');
+    // Hard load rather than a soft navigation: every page now requires a
+    // session, so a client-side push would race the cookie being cleared.
+    window.location.assign('/login');
   }
 
   const label = user.email ?? user.displayName ?? 'Account';
