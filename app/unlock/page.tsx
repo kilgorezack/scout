@@ -37,7 +37,8 @@ export default async function UnlockPage({
           <p className="eyebrow">Private site</p>
           <h1 className="display mt-2 text-3xl text-ink-900">Enter the password.</h1>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-600">
-            Scout is private. Every page needs the site password before it will load.
+            Your competitors would love this page. They&rsquo;re not getting it &mdash; enter your
+            password to continue.
           </p>
 
           {isPasswordConfigured() ? (
